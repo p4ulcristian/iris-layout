@@ -1,7 +1,8 @@
 (ns iris-layout.core
   (:require [reagent.core :as r]
             [iris-layout.layout :as layout]
-            [iris-layout.components.surface :as surface]))
+            [iris-layout.components.surface :as surface]
+            [iris-layout.components.sidebar :as sidebar]))
 
 ;; --- JS <-> CLJS boundary conversion ---
 
@@ -78,15 +79,25 @@
   [_]
   (let [;; Stable refs that survive re-renders — callbacks always read latest props
         props-ref (atom nil)
-        handle-split (fn [tile-id entity-id split-direction _before?]
+        handle-split (fn [tile-id entity-id split-direction source-type]
                        (let [{:keys [layout on-layout-change]} @props-ref
-                             new-tile-id (generate-id)
-                             split-id (generate-id)
-                             new-layout (layout/split-tile
-                                          layout tile-id split-direction
-                                          entity-id new-tile-id split-id)]
-                         (when (and new-layout on-layout-change)
-                           (on-layout-change new-layout))))
+                             target-tile (layout/find-tile layout tile-id)
+                             same-tile? (and target-tile
+                                             (= (:entity-id target-tile) entity-id))]
+                         (when-not same-tile?
+                           (let [base-layout (if (= source-type :tile)
+                                               (or (layout/remove-entity-from-layout layout entity-id)
+                                                   layout)
+                                               layout)
+                                 target-after (layout/find-tile base-layout tile-id)
+                                 new-tile-id (generate-id)
+                                 split-id (generate-id)
+                                 new-layout (when target-after
+                                              (layout/split-tile
+                                                base-layout tile-id split-direction
+                                                entity-id new-tile-id split-id))]
+                             (when (and new-layout on-layout-change)
+                               (on-layout-change new-layout))))))
         handle-ratio (fn [split-id new-ratio]
                        (let [{:keys [layout on-layout-change]} @props-ref
                              new-layout (layout/update-split-ratio layout split-id new-ratio)]
@@ -107,8 +118,8 @@
   [^js el anim-name]
   (when el
     (set! (.-animation (.-style el)) "none")
-    ;; Force reflow then set animation
-    (.getComputedStyle js/window el)
+    ;; Force reflow by reading a layout property
+    (.-offsetHeight el)
     (set! (.-animation (.-style el)) (str anim-name " 400ms cubic-bezier(0.22, 1, 0.36, 1)"))))
 
 (defn stages-component
@@ -127,16 +138,17 @@
         ;; Determine slide direction
         (when changed?
           (reset! slide-dir (if (and prev-idx curr-idx (> curr-idx prev-idx))
-                              "right" "left")))
-        ;; Trigger animation restart after render
+                              "down" "up")))
+        ;; Trigger animation after Reagent finishes rendering the DOM
         (when changed?
-          (let [dir @slide-dir]
-            (js/requestAnimationFrame
+          (let [dir @slide-dir
+                target-id active-stage]
+            (r/after-render
               (fn []
-                (when-let [el (get @layer-refs active-stage)]
-                  (restart-animation! el (if (= dir "right")
-                                           "iris-slide-from-right"
-                                           "iris-slide-from-left")))))))
+                (when-let [el (get @layer-refs target-id)]
+                  (restart-animation! el (if (= dir "down")
+                                           "iris-slide-from-bottom"
+                                           "iris-slide-from-top")))))))
         (reset! prev-stage-id active-stage)
         [:div.iris-stages
          [:div.iris-stage-tabs
@@ -199,7 +211,22 @@
                             (onStagesChange (stages->js new-stages))))
       :on-active-stage-change onActiveStageChange}]))
 
+(defn- sidebar-wrapper [{:keys [title stages activeStage entities
+                                onActiveStageChange onStagesChange]}]
+  (let [clj-stages (js->stages stages)
+        clj-entities (js->entities entities)]
+    [sidebar/sidebar-component
+     {:title title
+      :stages clj-stages
+      :active-stage activeStage
+      :entities clj-entities
+      :on-active-stage-change onActiveStageChange
+      :on-stages-change (when onStagesChange
+                          (fn [new-stages]
+                            (onStagesChange (stages->js new-stages))))}]))
+
 ;; --- Exported React components ---
 
 (def Stage (r/reactify-component stage-wrapper))
 (def Stages (r/reactify-component stages-wrapper))
+(def Sidebar (r/reactify-component sidebar-wrapper))

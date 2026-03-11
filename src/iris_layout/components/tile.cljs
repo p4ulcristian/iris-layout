@@ -1,65 +1,138 @@
 (ns iris-layout.components.tile
   (:require [reagent.core :as r]))
 
-(defn get-drop-direction
-  "Determine split direction based on mouse position in tile"
+(defn calculate-half
+  "Determine which half of the tile the cursor is closest to"
   [e tile-elem]
   (let [rect (.getBoundingClientRect tile-elem)
-        x (- (.-clientX e) (.-left rect))
-        y (- (.-clientY e) (.-top rect))
-        width (.-width rect)
-        height (.-height rect)
-        ;; Calculate distance from each edge as a fraction
-        from-left (/ x width)
-        from-top (/ y height)
-        from-right (- 1 from-left)
-        from-bottom (- 1 from-top)
-        min-dist (min from-left from-top from-right from-bottom)]
-    (cond
-      (= min-dist from-top) :vertical
-      (= min-dist from-bottom) :vertical
-      (= min-dist from-left) :horizontal
-      :else :horizontal)))
+        cx (+ (.-left rect) (/ (.-width rect) 2))
+        cy (+ (.-top rect) (/ (.-height rect) 2))
+        dx (- (.-clientX e) cx)
+        dy (- (.-clientY e) cy)]
+    (if (> (js/Math.abs dx) (js/Math.abs dy))
+      (if (neg? dx) :left :right)
+      (if (neg? dy) :top :bottom))))
+
+(defn half->direction [half]
+  (if (or (= half :left) (= half :right))
+    :horizontal
+    :vertical))
+
+(def direction-labels
+  {:top "Split above"
+   :bottom "Split below"
+   :left "Split left"
+   :right "Split right"})
+
+(defn drop-indicator
+  "Visual overlay showing where the drop will split"
+  [half visible?]
+  (when visible?
+    [:div.iris-drop-indicator
+     [:div {:class (str "iris-drop-highlight iris-drop-" (name half))}]
+     [:div.iris-drop-label-container
+      [:span.iris-drop-label (get direction-labels half "Split")]]]))
+
+;; Global alt-key tracking (shared across all tiles)
+(defonce alt-held (r/atom false))
+
+(defonce _alt-listeners
+  (do
+    (.addEventListener js/document "keydown"
+      (fn [e] (when (.-altKey e) (reset! alt-held true))))
+    (.addEventListener js/document "keyup"
+      (fn [e] (when (not (.-altKey e)) (reset! alt-held false))))
+    (.addEventListener js/window "blur"
+      (fn [_] (reset! alt-held false)))
+    true))
 
 (defn tile-component
-  "Tile component with drop zones for splitting"
+  "Tile component with drag-drop and directional split overlay.
+   on-split signature: (on-split target-tile-id entity-id direction source-type)
+   source-type is :tile or :sidebar"
   [node on-split focused? entities render-entity]
   (let [drag-over (r/atom false)
-        split-ref (atom on-split)]
+        closest-edge (r/atom nil)
+        dragging (r/atom false)
+        split-ref (atom on-split)
+        tile-ref (atom nil)]
     (fn [node on-split focused? entities render-entity]
       (reset! split-ref on-split)
       (let [entity (get entities (:entity-id node))]
         [:div
-         {:class (str "iris-tile"
+         {:ref #(reset! tile-ref %)
+          :class (str "iris-tile"
                       (when focused? " iris-tile-focused")
                       (when (not focused?) " iris-tile-unfocused")
-                      (when @drag-over " iris-drag-over"))
+                      (when @drag-over " iris-drag-over")
+                      (when @dragging " iris-dragging")
+                      (when @alt-held " iris-tile-grabbable"))
           :style {:flex 1}
+          :draggable true
+          :on-drag-start
+          (fn [e]
+            (if (.-altKey e)
+              (do
+                (.setData (.-dataTransfer e) "text/plain"
+                          (js/JSON.stringify #js {:tileId (:id node)
+                                                  :entityId (:entity-id node)
+                                                  :source "tile"}))
+                (set! (.-effectAllowed (.-dataTransfer e)) "all")
+                (reset! dragging true))
+              (.preventDefault e)))
+          :on-drag-end
+          (fn [_e]
+            (reset! dragging false))
           :on-drag-over
           (fn [e]
             (.preventDefault e)
-            (set! (.-dropEffect (.-dataTransfer e)) "copy")
-            (reset! drag-over true))
+            ;; Don't show overlay when dragging tile onto itself
+            (if @dragging
+              (do (reset! drag-over false)
+                  (reset! closest-edge nil))
+              (when-let [el @tile-ref]
+                (let [half (calculate-half e el)]
+                  (reset! closest-edge half)
+                  (reset! drag-over true))))
+)
           :on-drag-enter
           (fn [e]
             (.preventDefault e)
             (reset! drag-over true))
           :on-drag-leave
           (fn [e]
-            ;; Only reset when leaving the tile itself, not its children
             (when (not (.contains (.-currentTarget e) (.-relatedTarget e)))
-              (reset! drag-over false)))
+              (reset! drag-over false)
+              (reset! closest-edge nil)))
           :on-drop
           (fn [e]
             (.preventDefault e)
             (.stopPropagation e)
-            (let [entity-id (.getData (.-dataTransfer e) "text/plain")
-                  direction (get-drop-direction e (.-currentTarget e))
-                  before? false]
-              (when (and entity-id (not= entity-id ""))
-                (@split-ref (:id node) entity-id direction before?)))
-            (reset! drag-over false))}
+            (when-let [el @tile-ref]
+              (let [half (calculate-half e el)
+                    direction (half->direction half)
+                    raw (.getData (.-dataTransfer e) "text/plain")]
+                (try
+                  (let [data (js/JSON.parse raw)]
+                    (cond
+                      ;; Tile-to-tile rearrange
+                      (and (= (.-source data) "tile") (.-entityId data))
+                      (when (not= (.-tileId data) (:id node))
+                        (@split-ref (:id node) (.-entityId data) direction :tile))
 
-         ;; Render entity via user-provided function
+                      ;; Sidebar entity drag
+                      (= (.-source data) "sidebar")
+                      (when-let [eid (.-entityId data)]
+                        (@split-ref (:id node) eid direction :sidebar))))
+                  (catch :default _
+                    (when (and raw (not= raw ""))
+                      (@split-ref (:id node) raw direction :sidebar))))))
+            (reset! drag-over false)
+            (reset! closest-edge nil))}
+
+         ;; Render entity
          (when (and entity render-entity)
-           [:> render-entity entity])]))))
+           [:> render-entity entity])
+
+         ;; Drop indicator overlay
+         [drop-indicator @closest-edge @drag-over]]))))

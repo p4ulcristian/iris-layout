@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Iris Layout</title>
-  <link rel="stylesheet" href="./dist/styles.css?v=7" />
+  <link rel="stylesheet" href="./dist/styles.css?v=19" />
   <script type="importmap">
   {
     "imports": {
@@ -27,87 +27,6 @@
     .app {
       display: flex;
       height: 100vh;
-    }
-    .sidebar {
-      width: 260px;
-      min-width: 260px;
-      background: rgba(0,0,0,0.3);
-      backdrop-filter: blur(20px);
-      border-right: 1px solid rgba(255,255,255,0.08);
-      display: flex;
-      flex-direction: column;
-      padding: 20px 16px;
-      gap: 16px;
-    }
-    .sidebar h1 {
-      font-size: 20px;
-      font-weight: 700;
-      letter-spacing: -0.5px;
-      background: linear-gradient(135deg, #818cf8, #6366f1);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-    .sidebar h3 {
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 1.5px;
-      color: rgba(255,255,255,0.4);
-      margin-bottom: 4px;
-    }
-    .stage-list { display: flex; flex-direction: column; gap: 4px; }
-    .stage-btn {
-      padding: 10px 14px;
-      background: rgba(255,255,255,0.03);
-      border: 1px solid rgba(255,255,255,0.06);
-      border-radius: 8px;
-      color: rgba(255,255,255,0.6);
-      cursor: pointer;
-      font-size: 14px;
-      text-align: left;
-      transition: all 150ms ease;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-    .stage-btn:hover {
-      background: rgba(255,255,255,0.06);
-      color: rgba(255,255,255,0.9);
-    }
-    .stage-btn.active {
-      background: rgba(99, 102, 241, 0.15);
-      border-color: rgba(99, 102, 241, 0.3);
-      color: #fff;
-    }
-    .stage-icon {
-      width: 8px; height: 8px;
-      border-radius: 50%;
-      background: rgba(255,255,255,0.2);
-    }
-    .stage-btn.active .stage-icon {
-      background: #6366f1;
-      box-shadow: 0 0 8px rgba(99, 102, 241, 0.6);
-    }
-    .entity-list { display: flex; flex-direction: column; gap: 4px; }
-    .entity-chip {
-      padding: 8px 12px;
-      background: rgba(255,255,255,0.03);
-      border: 1px solid rgba(255,255,255,0.06);
-      border-radius: 8px;
-      color: rgba(255,255,255,0.6);
-      font-size: 13px;
-      cursor: grab;
-      transition: all 150ms ease;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .entity-chip:hover {
-      background: rgba(255,255,255,0.06);
-      transform: translateX(4px);
-    }
-    .entity-dot {
-      width: 6px; height: 6px;
-      border-radius: 50%;
     }
     /* Hide built-in stage tabs since we have custom sidebar tabs */
     .iris-stage-tabs { display: none; }
@@ -177,7 +96,7 @@
   <script type="module">
     import React, { useState, createElement as h } from 'react'
     import { createRoot } from 'react-dom/client'
-    import { Stage, Stages } from './dist/iris-layout.js'
+    import { Stage, Stages, Sidebar } from './dist/iris-layout.js?v=19'
 
     const ENTITIES = {
       editor: { id: 'editor', name: 'editor.cljs', type: 'code', color: '#6366f1' },
@@ -308,44 +227,15 @@
       const activeStage = stagesData.find(s => s.id === activeStageId) || stagesData[0]
 
       return h('div', {className:'app'},
-        // Sidebar
-        h('div', {className:'sidebar'},
-          h('h1', null, 'Iris Layout'),
-          h('div', null,
-            h('h3', null, 'Stages'),
-            h('div', {className:'stage-list'},
-              stagesData.map(s =>
-                h('button', {
-                  key: s.id,
-                  className: 'stage-btn' + (s.id === activeStageId ? ' active' : ''),
-                  onClick: () => setActiveStageId(s.id)
-                },
-                  h('span', {className:'stage-icon'}),
-                  s.label
-                )
-              )
-            )
-          ),
-          h('div', null,
-            h('h3', null, 'Entities'),
-            h('div', {className:'entity-list'},
-              Object.values(ENTITIES).map(e =>
-                h('div', {
-                  key: e.id,
-                  className: 'entity-chip',
-                  draggable: true,
-                  onDragStart: (ev) => {
-                    ev.dataTransfer.setData('text/plain', e.id)
-                    ev.dataTransfer.effectAllowed = 'copy'
-                  }
-                },
-                  h('span', {className:'entity-dot', style:{background: e.color}}),
-                  e.name
-                )
-              )
-            )
-          )
-        ),
+        // Sidebar — library component
+        h(Sidebar, {
+          title: 'Iris Layout',
+          stages: stagesData,
+          activeStage: activeStageId,
+          entities: ENTITIES,
+          onActiveStageChange: setActiveStageId,
+          onStagesChange: setStagesData
+        }),
         // Main area — Stages component with slide animation
         h('div', {className:'main-area'},
           h(Stages, {

@@ -82,6 +82,52 @@
         (replace-node tree (:id parent) sibling))
       tree)))
 
+(defn find-tile-by-entity
+  "Find the tile node that contains a given entity-id"
+  [tree entity-id]
+  (cond
+    (nil? tree) nil
+    (= (node-type tree) :tile)
+    (when (= (:entity-id tree) entity-id) tree)
+
+    (= (node-type tree) :split)
+    (or (find-tile-by-entity (first (:children tree)) entity-id)
+        (find-tile-by-entity (second (:children tree)) entity-id))))
+
+(defn remove-entity-from-layout
+  "Remove an entity from the layout tree and collapse empty splits.
+   Returns nil if the entire tree becomes empty."
+  [tree entity-id]
+  (letfn [(remove-and-collapse [node]
+            (cond
+              (nil? node) nil
+
+              (= (node-type node) :tile)
+              (if (= (:entity-id node) entity-id)
+                nil  ;; Remove this tile
+                node)
+
+              (= (node-type node) :split)
+              (let [[c1 c2] (:children node)
+                    new-c1 (remove-and-collapse c1)
+                    new-c2 (remove-and-collapse c2)]
+                (cond
+                  (nil? new-c1) new-c2  ;; Collapse: return sibling
+                  (nil? new-c2) new-c1  ;; Collapse: return sibling
+                  :else (assoc node :children [new-c1 new-c2])))
+
+              :else node))]
+    (remove-and-collapse tree)))
+
+(defn collect-entity-ids
+  "Walk layout tree and return a vector of entity IDs (in order)"
+  [node]
+  (cond
+    (nil? node) []
+    (= (node-type node) :tile) (if (:entity-id node) [(:entity-id node)] [])
+    (= (node-type node) :split) (into [] (mapcat collect-entity-ids (:children node)))
+    :else []))
+
 (defn update-split-ratio
   "Update the ratio of a split (clamped 0.1-0.9)"
   [tree split-id new-ratio]

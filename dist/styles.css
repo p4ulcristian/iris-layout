@@ -68,9 +68,69 @@
   /* Only dim when there IS a focused tile */
 }
 
+.iris-tile.iris-tile-grabbable {
+  cursor: grab;
+}
+
+.iris-tile.iris-tile-grabbable:active {
+  cursor: grabbing;
+}
+
+.iris-tile.iris-dragging {
+  opacity: 0.3;
+}
+
 .iris-drag-over {
   border-color: rgba(99, 102, 241, 0.6);
   box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
+}
+
+/* Drop indicator overlay */
+.iris-drop-indicator {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 50;
+}
+
+.iris-drop-highlight {
+  position: absolute;
+  background: rgba(99, 102, 241, 0.25);
+  transition: all 150ms ease;
+}
+
+.iris-drop-highlight.iris-drop-top {
+  top: 0; left: 0; right: 0; height: 50%;
+}
+
+.iris-drop-highlight.iris-drop-bottom {
+  bottom: 0; left: 0; right: 0; height: 50%;
+}
+
+.iris-drop-highlight.iris-drop-left {
+  top: 0; bottom: 0; left: 0; width: 50%;
+}
+
+.iris-drop-highlight.iris-drop-right {
+  top: 0; bottom: 0; right: 0; width: 50%;
+}
+
+.iris-drop-label-container {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.iris-drop-label {
+  padding: 4px 12px;
+  background: rgba(99, 102, 241, 0.9);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: 20px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
 }
 
 /* Resizer — invisible by default, visible on hover */
@@ -139,26 +199,22 @@
 
 /* Animations */
 
-/* Stage slide animations */
-@keyframes iris-slide-from-right {
+/* Stage slide animations — vertical based on stage order */
+@keyframes iris-slide-from-bottom {
   from {
-    opacity: 0;
-    transform: translateX(80px);
+    transform: translateY(80px);
   }
   to {
-    opacity: 1;
-    transform: translateX(0);
+    transform: translateY(0);
   }
 }
 
-@keyframes iris-slide-from-left {
+@keyframes iris-slide-from-top {
   from {
-    opacity: 0;
-    transform: translateX(-80px);
+    transform: translateY(-80px);
   }
   to {
-    opacity: 1;
-    transform: translateX(0);
+    transform: translateY(0);
   }
 }
 
@@ -203,3 +259,111 @@
 .iris-tile.iris-animating {
   animation: iris-glow 600ms ease-in-out;
 }
+
+/* Sidebar */
+.iris-sidebar {
+  width: 260px;
+  min-width: 260px;
+  background: rgba(0,0,0,0.3);
+  backdrop-filter: blur(20px);
+  border-right: 1px solid rgba(255,255,255,0.08);
+  display: flex;
+  flex-direction: column;
+  padding: 20px 16px;
+  gap: 16px;
+  overflow-y: auto;
+}
+
+.iris-sidebar-title {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  background: linear-gradient(135deg, #818cf8, #6366f1);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.iris-sidebar-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.iris-sidebar-heading {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: rgba(255,255,255,0.4);
+}
+
+.iris-stage-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.iris-stage-card {
+  padding: 10px 14px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 8px;
+  color: rgba(255,255,255,0.6);
+  cursor: pointer;
+  font-size: 14px;
+  text-align: left;
+  transition: all 150ms ease;
+}
+
+.iris-stage-card:hover {
+  background: rgba(255,255,255,0.06);
+  color: rgba(255,255,255,0.9);
+}
+
+.iris-stage-card-active {
+  background: rgba(99, 102, 241, 0.15);
+  border-color: rgba(99, 102, 241, 0.3);
+  color: #fff;
+}
+
+.iris-stage-card-content {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.iris-stage-card-label {
+  font-weight: 500;
+}
+
+.iris-stage-card-entities {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.iris-entity-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.iris-entity-chip {
+  padding: 5px 8px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 6px;
+  color: rgba(255,255,255,0.5);
+  font-size: 11px;
+  cursor: grab;
+  transition: all 150ms ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.iris-entity-chip:hover {
+  background: rgba(255,255,255,0.08);
+  color: rgba(255,255,255,0.8);
+}
+
