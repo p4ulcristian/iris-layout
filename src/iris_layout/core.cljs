@@ -232,13 +232,32 @@
 ;; Sidebar — stage cards with entity cards
 ;; ============================================================
 
-(defn sidebar-component
-  "Sidebar — renders a list of stage cards.
+(defn- remove-entity-from-stages
+  "Remove an entity from a specific stage. If the stage becomes empty, remove it.
+   Returns [updated-stages removed-stage-empty?]."
+  [stages source-stage-id entity-id]
+  (let [source-stage (first (filter #(= (:id %) source-stage-id) stages))
+        new-layout (when source-stage
+                     (layout/remove-entity-from-layout (:layout source-stage) entity-id))
+        empty? (nil? new-layout)]
+    [(if empty?
+       (vec (remove #(= (:id %) source-stage-id) stages))
+       (mapv (fn [s]
+               (if (= (:id s) source-stage-id)
+                 (assoc s :layout new-layout)
+                 s))
+             stages))
+     empty?]))
 
-   Each card shows the stage label and its entities as draggable cards.
-   Clicking a card switches the active stage.
-   Clicking an entity card sets the active entity.
-   Clicking an entity card's close button removes it from the stage layout.
+(defn sidebar-component
+  "Sidebar — renders a list of stage cards with drag-drop support.
+
+   Features:
+   - Click a card to switch active stage
+   - Click an entity card to focus it
+   - Close button removes entity from stage (empty stage is removed)
+   - Drag entity cards between groups to move them
+   - Drag entity cards to empty sidebar area to create a new group
 
    Props (received as CLJS map after wrapper conversion):
    :stages                  - vector of stage maps
@@ -250,45 +269,87 @@
    :on-active-stage-change  - fn(stage-id) for stage switches
    :on-active-entity-change - fn(entity-id) for entity focus
    :on-entity-close         - (optional) fn(stage-id, entity-id) side-effect hook called on close"
-  [{:keys [stages active-stage active-entity entities render-entity-card
-           on-stages-change on-active-stage-change on-active-entity-change
-           on-entity-close]}]
-  [:div.iris-sidebar
-   (for [stage stages]
-     ^{:key (:id stage)}
-     [entity-card-group/entity-card-group-component
-      {:stage stage
-       :active? (= (:id stage) active-stage)
-       :entities entities
-       :active-entity active-entity
-       :render-entity-card render-entity-card
-       :on-click #(when on-active-stage-change
-                    (on-active-stage-change (:id stage)))
-       :on-entity-click #(when on-active-entity-change
-                           (on-active-entity-change %))
-       :on-entity-close
-       (fn [entity-id]
-         ;; Remove entity from this stage's layout
-         ;; If layout becomes nil (empty), remove the entire stage
-         (when on-stages-change
-           (let [new-layout (layout/remove-entity-from-layout (:layout stage) entity-id)
-                 updated (if (nil? new-layout)
-                           (vec (remove #(= (:id %) (:id stage)) stages))
-                           (mapv (fn [s]
-                                   (if (= (:id s) (:id stage))
-                                     (assoc s :layout new-layout)
-                                     s))
-                                 stages))]
-             (on-stages-change updated)
-             ;; If active stage was removed, switch to first remaining
-             (when (and (nil? new-layout)
-                        (= active-stage (:id stage))
-                        on-active-stage-change
-                        (seq updated))
-               (on-active-stage-change (:id (first updated))))))
-         ;; Optional side-effect callback
-         (when on-entity-close
-           (on-entity-close (:id stage) entity-id)))}])])
+  [_]
+  (let [drag-over (r/atom false)]
+    (fn [{:keys [stages active-stage active-entity entities render-entity-card
+                 on-stages-change on-active-stage-change on-active-entity-change
+                 on-entity-close]}]
+      [:div.iris-sidebar
+       {:class (when @drag-over "iris-sidebar-drag-over")
+        :on-drag-over (fn [e] (.preventDefault e) (reset! drag-over true))
+        :on-drag-enter (fn [e] (.preventDefault e))
+        :on-drag-leave (fn [e]
+                         (when (not (.contains (.-currentTarget e) (.-relatedTarget e)))
+                           (reset! drag-over false)))
+        :on-drop
+        (fn [e]
+          (.preventDefault e)
+          (reset! drag-over false)
+          ;; Only handle if not caught by a group (stopPropagation)
+          (let [raw (.getData (.-dataTransfer e) "text/plain")]
+            (try
+              (let [data (js/JSON.parse raw)]
+                (when (and (= (.-source data) "sidebar")
+                           (.-entityId data)
+                           (.-stageId data)
+                           on-stages-change)
+                  (let [entity-id (.-entityId data)
+                        source-stage-id (.-stageId data)
+                        [updated _] (remove-entity-from-stages stages source-stage-id entity-id)
+                        new-stage-id (generate-id)
+                        new-stage {:id new-stage-id
+                                   :label (or (:name (get entities entity-id)) "New Stage")
+                                   :layout {:type :tile
+                                            :id (generate-id)
+                                            :entity-id entity-id}}]
+                    (on-stages-change (conj updated new-stage))
+                    (when on-active-stage-change
+                      (on-active-stage-change new-stage-id)))))
+              (catch :default _ nil))))}
+       (for [stage stages]
+         ^{:key (:id stage)}
+         [entity-card-group/entity-card-group-component
+          {:stage stage
+           :active? (= (:id stage) active-stage)
+           :entities entities
+           :active-entity active-entity
+           :render-entity-card render-entity-card
+           :on-click #(when on-active-stage-change
+                        (on-active-stage-change (:id stage)))
+           :on-entity-click #(when on-active-entity-change
+                               (on-active-entity-change %))
+           :on-entity-close
+           (fn [entity-id]
+             (when on-stages-change
+               (let [[updated empty?] (remove-entity-from-stages stages (:id stage) entity-id)]
+                 (on-stages-change updated)
+                 (when (and empty?
+                            (= active-stage (:id stage))
+                            on-active-stage-change
+                            (seq updated))
+                   (on-active-stage-change (:id (first updated))))))
+             (when on-entity-close
+               (on-entity-close (:id stage) entity-id)))
+           :on-entity-drop
+           (fn [entity-id source-stage-id]
+             ;; Move entity from source stage to this stage
+             (when on-stages-change
+               (let [[updated source-empty?] (remove-entity-from-stages stages source-stage-id entity-id)
+                     ;; Add entity to target stage's layout
+                     updated (mapv (fn [s]
+                                     (if (= (:id s) (:id stage))
+                                       (assoc s :layout
+                                              (layout/append-entity
+                                                (:layout s) entity-id
+                                                (generate-id) (generate-id)))
+                                       s))
+                                   updated)]
+                 (on-stages-change updated)
+                 ;; If source was active and got removed, switch to target
+                 (when (and source-empty?
+                            (= active-stage source-stage-id)
+                            on-active-stage-change)
+                   (on-active-stage-change (:id stage))))))}])])))
 
 ;; ============================================================
 ;; React-facing wrappers (JS consumers)

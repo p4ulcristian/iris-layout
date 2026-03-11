@@ -143,3 +143,12 @@
                 (assoc node :children
                        (mapv update-node (:children node))))))]
     (update-node tree)))
+
+(defn append-entity
+  "Append an entity to an existing layout by wrapping in a horizontal split.
+   If layout is nil, creates a single tile."
+  [layout entity-id tile-id split-id]
+  (let [new-tile (create-tile tile-id entity-id)]
+    (if (nil? layout)
+      new-tile
+      (create-split split-id :horizontal layout new-tile 0.5))))
