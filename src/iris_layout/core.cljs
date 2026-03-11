@@ -102,20 +102,41 @@
   [stages id]
   (first (keep-indexed (fn [i s] (when (= (:id s) id) i)) stages)))
 
+(defn- restart-animation!
+  "Force restart CSS animation on an element"
+  [^js el anim-name]
+  (when el
+    (set! (.-animation (.-style el)) "none")
+    ;; Force reflow then set animation
+    (.getComputedStyle js/window el)
+    (set! (.-animation (.-style el)) (str anim-name " 400ms cubic-bezier(0.22, 1, 0.36, 1)"))))
+
 (defn stages-component
   "Multi-stage container — all stages rendered and stacked,
    active one slides into view over the others."
   [_]
   (let [prev-stage-id (atom nil)
-        slide-dir (atom "right")]
+        slide-dir (atom "right")
+        ;; Store refs to stage layer DOM elements
+        layer-refs (atom {})]
     (fn [{:keys [stages active-stage entities render-entity
                  on-stages-change on-active-stage-change]}]
       (let [prev-idx (stage-index stages @prev-stage-id)
-            curr-idx (stage-index stages active-stage)]
+            curr-idx (stage-index stages active-stage)
+            changed? (and @prev-stage-id (not= @prev-stage-id active-stage))]
         ;; Determine slide direction
-        (when (and @prev-stage-id (not= @prev-stage-id active-stage))
+        (when changed?
           (reset! slide-dir (if (and prev-idx curr-idx (> curr-idx prev-idx))
                               "right" "left")))
+        ;; Trigger animation restart after render
+        (when changed?
+          (let [dir @slide-dir]
+            (js/requestAnimationFrame
+              (fn []
+                (when-let [el (get @layer-refs active-stage)]
+                  (restart-animation! el (if (= dir "right")
+                                           "iris-slide-from-right"
+                                           "iris-slide-from-left")))))))
         (reset! prev-stage-id active-stage)
         [:div.iris-stages
          [:div.iris-stage-tabs
@@ -131,8 +152,8 @@
           (for [stage stages]
             ^{:key (:id stage)}
             [:div {:class (str "iris-stage-layer"
-                               (when (= (:id stage) active-stage)
-                                 (str " iris-stage-active iris-slide-" @slide-dir)))}
+                               (when (= (:id stage) active-stage) " iris-stage-active"))
+                   :ref (fn [el] (when el (swap! layer-refs assoc (:id stage) el)))}
              [stage-component
               {:layout (:layout stage)
                :entities entities

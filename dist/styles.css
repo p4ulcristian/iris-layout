@@ -187,13 +187,7 @@
   z-index: 1;
 }
 
-.iris-stage-layer.iris-stage-active.iris-slide-right {
-  animation: iris-slide-from-right 400ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.iris-stage-layer.iris-stage-active.iris-slide-left {
-  animation: iris-slide-from-left 400ms cubic-bezier(0.22, 1, 0.36, 1);
-}
+/* Animation is triggered via JS for proper restart on each switch */
 
 
 /* Glow effect */
