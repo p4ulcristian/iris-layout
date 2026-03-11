@@ -163,19 +163,36 @@
   }
 }
 
-/* Stage content wrapper for slide animation */
-.iris-stage-content {
-  display: flex;
+/* Stacked stages container */
+.iris-stages-stack {
+  position: relative;
   flex: 1;
   min-height: 0;
-  min-width: 0;
+  overflow: hidden;
 }
 
-.iris-stage-content.iris-slide-right {
+/* Each stage layer — stacked, hidden by default */
+.iris-stage-layer {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Active stage — visible, on top, with slide animation */
+.iris-stage-layer.iris-stage-active {
+  opacity: 1;
+  pointer-events: auto;
+  z-index: 1;
+}
+
+.iris-stage-layer.iris-stage-active.iris-slide-right {
   animation: iris-slide-from-right 400ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.iris-stage-content.iris-slide-left {
+.iris-stage-layer.iris-stage-active.iris-slide-left {
   animation: iris-slide-from-left 400ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
