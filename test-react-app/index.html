@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Iris Layout</title>
-  <link rel="stylesheet" href="./dist/styles.css" />
+  <link rel="stylesheet" href="./dist/styles.css?v=2" />
   <script type="importmap">
   {
     "imports": {
@@ -113,6 +113,9 @@
       flex: 1;
       display: flex;
       padding: 12px;
+      height: 100vh;
+      min-height: 0;
+      overflow: hidden;
     }
     /* Entity renderers */
     .entity-panel {

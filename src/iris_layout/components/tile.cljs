@@ -9,19 +9,25 @@
         y (- (.-clientY e) (.-top rect))
         width (.-width rect)
         height (.-height rect)
-        x-ratio (/ x width)
-        y-ratio (/ y height)]
+        ;; Calculate distance from each edge as a fraction
+        from-left (/ x width)
+        from-top (/ y height)
+        from-right (- 1 from-left)
+        from-bottom (- 1 from-top)
+        min-dist (min from-left from-top from-right from-bottom)]
     (cond
-      (< y-ratio 0.5) :top
-      (> y-ratio 0.5) :bottom
-      (< x-ratio 0.5) :left
-      :else :right)))
+      (= min-dist from-top) :vertical
+      (= min-dist from-bottom) :vertical
+      (= min-dist from-left) :horizontal
+      :else :horizontal)))
 
 (defn tile-component
   "Tile component with drop zones for splitting"
   [node on-split focused? entities render-entity]
-  (let [drag-over (r/atom false)]
+  (let [drag-over (r/atom false)
+        split-ref (atom on-split)]
     (fn [node on-split focused? entities render-entity]
+      (reset! split-ref on-split)
       (let [entity (get entities (:entity-id node))]
         [:div
          {:class (str "iris-tile"
@@ -32,21 +38,27 @@
           :on-drag-over
           (fn [e]
             (.preventDefault e)
+            (set! (.-dropEffect (.-dataTransfer e)) "copy")
+            (reset! drag-over true))
+          :on-drag-enter
+          (fn [e]
+            (.preventDefault e)
             (reset! drag-over true))
           :on-drag-leave
-          (fn [_]
-            (reset! drag-over false))
+          (fn [e]
+            ;; Only reset when leaving the tile itself, not its children
+            (when (not (.contains (.-currentTarget e) (.-relatedTarget e)))
+              (reset! drag-over false)))
           :on-drop
           (fn [e]
             (.preventDefault e)
+            (.stopPropagation e)
             (let [entity-id (.getData (.-dataTransfer e) "text/plain")
                   direction (get-drop-direction e (.-currentTarget e))
-                  split-dir (if (#{:top :bottom} direction)
-                              :vertical
-                              :horizontal)
-                  before? (#{:top :left} direction)]
-              (on-split (:id node) entity-id split-dir before?)
-              (reset! drag-over false)))}
+                  before? false]
+              (when (and entity-id (not= entity-id ""))
+                (@split-ref (:id node) entity-id direction before?)))
+            (reset! drag-over false))}
 
          ;; Render entity via user-provided function
          (when (and entity render-entity)

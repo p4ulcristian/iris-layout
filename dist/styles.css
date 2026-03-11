@@ -4,6 +4,8 @@
   display: flex;
   flex: 1;
   position: relative;
+  height: 100%;
+  min-height: 0;
 }
 
 .iris-split-container {
@@ -11,6 +13,21 @@
   flex: 1;
   gap: 4px;
   position: relative;
+  min-height: 0;
+  min-width: 0;
+}
+
+/* Flex children stretch and animate ratio changes */
+.iris-split-container > div {
+  transition: flex 200ms cubic-bezier(0.22, 1, 0.36, 1);
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+}
+
+/* Disable flex transition during active drag for instant feedback */
+.iris-split-container.iris-dragging > div {
+  transition: none;
 }
 
 .iris-split-container.horizontal {
@@ -119,7 +136,41 @@
   color: #ffffff;
 }
 
-/* Animation */
+/* Animations */
+
+/* Stage enter animation */
+@keyframes iris-stage-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.iris-stage {
+  animation: iris-stage-enter 300ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Tile enter animation */
+@keyframes iris-tile-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.iris-tile {
+  animation: iris-tile-enter 400ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Glow effect */
 @keyframes iris-glow {
   0%, 100% {
     box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);

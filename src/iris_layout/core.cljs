@@ -76,26 +76,26 @@
    :on-layout-change - fn(new-layout) called on layout mutations
    :focused-tile  - optional tile id"
   [_]
-  (let [;; Stable refs that survive re-renders
-        props-ref (atom nil)]
+  (let [;; Stable refs that survive re-renders — callbacks always read latest props
+        props-ref (atom nil)
+        handle-split (fn [tile-id entity-id split-direction _before?]
+                       (let [{:keys [layout on-layout-change]} @props-ref
+                             new-tile-id (generate-id)
+                             split-id (generate-id)
+                             new-layout (layout/split-tile
+                                          layout tile-id split-direction
+                                          entity-id new-tile-id split-id)]
+                         (when (and new-layout on-layout-change)
+                           (on-layout-change new-layout))))
+        handle-ratio (fn [split-id new-ratio]
+                       (let [{:keys [layout on-layout-change]} @props-ref
+                             new-layout (layout/update-split-ratio layout split-id new-ratio)]
+                         (when on-layout-change
+                           (on-layout-change new-layout))))]
     (fn [{:keys [layout entities render-entity on-layout-change focused-tile] :as props}]
       (reset! props-ref props)
-      (let [handle-split (fn [tile-id entity-id split-direction _before?]
-                           (let [{:keys [layout on-layout-change]} @props-ref
-                                 new-tile-id (generate-id)
-                                 split-id (generate-id)
-                                 new-layout (layout/split-tile
-                                              layout tile-id split-direction
-                                              entity-id new-tile-id split-id)]
-                             (when (and new-layout on-layout-change)
-                               (on-layout-change new-layout))))
-            handle-ratio (fn [split-id new-ratio]
-                           (let [{:keys [layout on-layout-change]} @props-ref
-                                 new-layout (layout/update-split-ratio layout split-id new-ratio)]
-                             (when on-layout-change
-                               (on-layout-change new-layout))))]
-        [:div.iris-stage
-         [surface/surface layout handle-split handle-ratio focused-tile entities render-entity]]))))
+      [:div.iris-stage
+       [surface/surface layout handle-split handle-ratio focused-tile entities render-entity]])))
 
 (defn stages-component
   "Multi-stage container. Props map:
