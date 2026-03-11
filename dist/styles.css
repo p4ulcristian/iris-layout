@@ -1,6 +1,28 @@
-/* iris-layout library styles */
+/* ============================================================
+   iris-layout library styles
+   ============================================================
+   CSS classes are organized by component:
+   - .iris-body-*              Body (stage stack)
+   - .iris-entity-tile-*       Entity tile (leaf node in layout)
+   - .iris-entity-tile-group   Entity tile group (split container)
+   - .iris-entity-card-*       Entity card (sidebar chip)
+   - .iris-entity-card-group-* Entity card group (stage card in sidebar)
+   - .iris-sidebar-*           Sidebar container
+   - .iris-resizer-*           Split resizer
+   - .iris-drop-*              Drop indicator overlay
+   ============================================================ */
 
-.iris-stage {
+/* --- Body --- */
+
+.iris-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+.iris-body-stage {
   display: flex;
   flex: 1;
   position: relative;
@@ -8,7 +30,43 @@
   min-height: 0;
 }
 
-.iris-split-container {
+/* Stacked layers — all stages rendered, only active is visible */
+.iris-body-stack {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.iris-body-layer {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.iris-body-layer.iris-body-layer-active {
+  opacity: 1;
+  pointer-events: auto;
+  z-index: 1;
+}
+
+/* Stage slide animations — vertical based on stage order */
+@keyframes iris-slide-from-bottom {
+  from { transform: translateY(80px); }
+  to   { transform: translateY(0); }
+}
+
+@keyframes iris-slide-from-top {
+  from { transform: translateY(-80px); }
+  to   { transform: translateY(0); }
+}
+
+/* --- Entity tile group (split container) --- */
+
+.iris-entity-tile-group {
   display: flex;
   flex: 1;
   gap: 4px;
@@ -17,29 +75,29 @@
   min-width: 0;
 }
 
-/* Flex children stretch and animate ratio changes */
-.iris-split-container > div {
+.iris-entity-tile-group > div {
   transition: flex 200ms cubic-bezier(0.22, 1, 0.36, 1);
   min-height: 0;
   min-width: 0;
   display: flex;
 }
 
-/* Disable flex transition during active drag for instant feedback */
-.iris-split-container.iris-dragging > div {
+/* Disable flex transition during active resize for instant feedback */
+.iris-entity-tile-group.iris-dragging > div {
   transition: none;
 }
 
-.iris-split-container.horizontal {
+.iris-entity-tile-group.horizontal {
   flex-direction: row;
 }
 
-.iris-split-container.vertical {
+.iris-entity-tile-group.vertical {
   flex-direction: column;
 }
 
-/* Tile */
-.iris-tile {
+/* --- Entity tile --- */
+
+.iris-entity-tile {
   position: relative;
   border-radius: 12px;
   overflow: hidden;
@@ -54,29 +112,29 @@
   flex-direction: column;
 }
 
-.iris-tile:hover {
+.iris-entity-tile:hover {
   border-color: rgba(255,255,255,0.25);
 }
 
-.iris-tile-focused {
+.iris-entity-tile-focused {
   box-shadow: 0 12px 40px rgba(99, 102, 241, 0.4);
   border-color: rgba(99, 102, 241, 0.5);
   z-index: 10;
 }
 
-.iris-tile-unfocused {
-  /* Only dim when there IS a focused tile */
+.iris-entity-tile-unfocused {
+  /* Placeholder — user can style unfocused tiles */
 }
 
-.iris-tile.iris-tile-grabbable {
+.iris-entity-tile.iris-entity-tile-grabbable {
   cursor: grab;
 }
 
-.iris-tile.iris-tile-grabbable:active {
+.iris-entity-tile.iris-entity-tile-grabbable:active {
   cursor: grabbing;
 }
 
-.iris-tile.iris-dragging {
+.iris-entity-tile.iris-dragging {
   opacity: 0.3;
 }
 
@@ -85,7 +143,18 @@
   box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
 }
 
-/* Drop indicator overlay */
+/* Glow animation for tile interactions */
+@keyframes iris-glow {
+  0%, 100% { box-shadow: 0 0 20px rgba(99, 102, 241, 0.3); }
+  50%      { box-shadow: 0 0 40px rgba(99, 102, 241, 0.6); }
+}
+
+.iris-entity-tile.iris-animating {
+  animation: iris-glow 600ms ease-in-out;
+}
+
+/* --- Drop indicator overlay --- */
+
 .iris-drop-indicator {
   position: absolute;
   inset: 0;
@@ -99,21 +168,10 @@
   transition: all 150ms ease;
 }
 
-.iris-drop-highlight.iris-drop-top {
-  top: 0; left: 0; right: 0; height: 50%;
-}
-
-.iris-drop-highlight.iris-drop-bottom {
-  bottom: 0; left: 0; right: 0; height: 50%;
-}
-
-.iris-drop-highlight.iris-drop-left {
-  top: 0; bottom: 0; left: 0; width: 50%;
-}
-
-.iris-drop-highlight.iris-drop-right {
-  top: 0; bottom: 0; right: 0; width: 50%;
-}
+.iris-drop-highlight.iris-drop-top    { top: 0; left: 0; right: 0; height: 50%; }
+.iris-drop-highlight.iris-drop-bottom { bottom: 0; left: 0; right: 0; height: 50%; }
+.iris-drop-highlight.iris-drop-left   { top: 0; bottom: 0; left: 0; width: 50%; }
+.iris-drop-highlight.iris-drop-right  { top: 0; bottom: 0; right: 0; width: 50%; }
 
 .iris-drop-label-container {
   position: absolute;
@@ -133,7 +191,8 @@
   box-shadow: 0 4px 12px rgba(0,0,0,0.3);
 }
 
-/* Resizer — invisible by default, visible on hover */
+/* --- Resizer --- */
+
 .iris-resizer {
   background: transparent;
   transition: background 200ms ease;
@@ -161,148 +220,17 @@
   background: rgba(99, 102, 241, 0.5);
 }
 
-/* Stages tabs */
-.iris-stages {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  overflow: hidden;
-  position: relative;
-}
+/* --- Sidebar --- */
 
-.iris-stage-tabs {
-  display: flex;
-  gap: 4px;
-  padding: 8px;
-}
-
-.iris-stage-tab {
-  padding: 6px 16px;
-  background: rgba(255,255,255,0.05);
-  border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 6px;
-  color: rgba(255,255,255,0.7);
-  cursor: pointer;
-  font-size: 14px;
-  transition: all 150ms ease;
-}
-
-.iris-stage-tab:hover {
-  background: rgba(255,255,255,0.1);
-}
-
-.iris-stage-tab-active {
-  background: rgba(99, 102, 241, 0.3);
-  border-color: rgba(99, 102, 241, 0.5);
-  color: #ffffff;
-}
-
-/* Animations */
-
-/* Stage slide animations — vertical based on stage order */
-@keyframes iris-slide-from-bottom {
-  from {
-    transform: translateY(80px);
-  }
-  to {
-    transform: translateY(0);
-  }
-}
-
-@keyframes iris-slide-from-top {
-  from {
-    transform: translateY(-80px);
-  }
-  to {
-    transform: translateY(0);
-  }
-}
-
-/* Stacked stages container */
-.iris-stages-stack {
-  position: relative;
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
-}
-
-/* Each stage layer — stacked, hidden by default */
-.iris-stage-layer {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  opacity: 0;
-  pointer-events: none;
-  z-index: 0;
-}
-
-/* Active stage — visible, on top, with slide animation */
-.iris-stage-layer.iris-stage-active {
-  opacity: 1;
-  pointer-events: auto;
-  z-index: 1;
-}
-
-/* Animation is triggered via JS for proper restart on each switch */
-
-
-/* Glow effect */
-@keyframes iris-glow {
-  0%, 100% {
-    box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
-  }
-  50% {
-    box-shadow: 0 0 40px rgba(99, 102, 241, 0.6);
-  }
-}
-
-.iris-tile.iris-animating {
-  animation: iris-glow 600ms ease-in-out;
-}
-
-/* Sidebar */
 .iris-sidebar {
-  width: 260px;
-  min-width: 260px;
-  background: rgba(0,0,0,0.3);
-  backdrop-filter: blur(20px);
-  border-right: 1px solid rgba(255,255,255,0.08);
-  display: flex;
-  flex-direction: column;
-  padding: 20px 16px;
-  gap: 16px;
-  overflow-y: auto;
-}
-
-.iris-sidebar-title {
-  font-size: 20px;
-  font-weight: 700;
-  letter-spacing: -0.5px;
-  background: linear-gradient(135deg, #818cf8, #6366f1);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-.iris-sidebar-section {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.iris-sidebar-heading {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 1.5px;
-  color: rgba(255,255,255,0.4);
-}
-
-.iris-stage-list {
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
-.iris-stage-card {
+/* --- Entity card group (stage card in sidebar) --- */
+
+.iris-entity-card-group {
   padding: 10px 14px;
   background: rgba(255,255,255,0.03);
   border: 1px solid rgba(255,255,255,0.06);
@@ -314,41 +242,36 @@
   transition: all 150ms ease;
 }
 
-.iris-stage-card:hover {
+.iris-entity-card-group:hover {
   background: rgba(255,255,255,0.06);
   color: rgba(255,255,255,0.9);
 }
 
-.iris-stage-card-active {
+.iris-entity-card-group-active {
   background: rgba(99, 102, 241, 0.15);
   border-color: rgba(99, 102, 241, 0.3);
   color: #fff;
 }
 
-.iris-stage-card-content {
+.iris-entity-card-group-content {
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 
-.iris-stage-card-label {
+.iris-entity-card-group-label {
   font-weight: 500;
 }
 
-.iris-stage-card-entities {
+.iris-entity-card-group-entities {
   display: flex;
   flex-direction: column;
   gap: 3px;
 }
 
-.iris-entity-dot {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
+/* --- Entity card (sidebar chip) --- */
 
-.iris-entity-chip {
+.iris-entity-card {
   padding: 5px 8px;
   background: rgba(255,255,255,0.04);
   border: 1px solid rgba(255,255,255,0.06);
@@ -362,8 +285,41 @@
   gap: 6px;
 }
 
-.iris-entity-chip:hover {
+.iris-entity-card:hover {
   background: rgba(255,255,255,0.08);
   color: rgba(255,255,255,0.8);
 }
 
+.iris-entity-card-close {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.3);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 2px;
+  transition: color 150ms ease;
+  opacity: 0;
+}
+
+.iris-entity-card:hover .iris-entity-card-close {
+  opacity: 1;
+}
+
+.iris-entity-card-close:hover {
+  color: rgba(255,255,255,0.9);
+}
+
+.iris-entity-card-active {
+  background: rgba(99, 102, 241, 0.15);
+  border-color: rgba(99, 102, 241, 0.3);
+  color: rgba(255,255,255,0.9);
+}
+
+.iris-entity-card-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}

@@ -1,8 +1,22 @@
-(ns iris-layout.components.tile
+(ns iris-layout.components.entity-tile
+  "Entity tile component — renders a single entity inside the Body layout.
+
+   Each tile is a leaf node in the layout tree. It:
+   - Renders user content via the `render-entity-tile` callback
+   - Supports Alt+drag to rearrange tiles within the layout
+   - Shows directional drop overlay (split above/below/left/right)
+   - Detects no-op rearrangements and hides the overlay
+
+   Drag-drop protocol:
+   - Tiles are draggable only while Alt is held (grab cursor appears)
+   - On drag-start, serializes {:tileId :entityId :source \"tile\"} as JSON
+   - On drag-over, calculates nearest edge and shows half-tile highlight
+   - On drop, calls `on-split` with target tile-id, entity-id, direction, source-type"
   (:require [reagent.core :as r]))
 
 (defn calculate-half
-  "Determine which half of the tile the cursor is closest to"
+  "Determine which half of the tile the cursor is closest to.
+   Returns :left, :right, :top, or :bottom."
   [e tile-elem]
   (let [rect (.getBoundingClientRect tile-elem)
         cx (+ (.-left rect) (/ (.-width rect) 2))
@@ -13,7 +27,10 @@
       (if (neg? dx) :left :right)
       (if (neg? dy) :top :bottom))))
 
-(defn half->direction [half]
+(defn half->direction
+  "Convert an edge half to a split direction.
+   :left/:right → :horizontal, :top/:bottom → :vertical."
+  [half]
   (if (or (= half :left) (= half :right))
     :horizontal
     :vertical))
@@ -27,7 +44,10 @@
 (defn- noop-rearrange?
   "Check if dropping source-tile-id at `half` of this tile would be a no-op.
    True when the source is the direct sibling in the same split direction
-   and the drop position would keep the same order."
+   and the drop position would keep the same order.
+
+   parent-ctx is {:direction :sibling-id :child-index} provided by the
+   entity-tile-group (surface) component."
   [source-tile-id half parent-ctx]
   (when parent-ctx
     (let [{:keys [direction sibling-id child-index]} parent-ctx
@@ -38,7 +58,8 @@
             (and (= child-index 1) (or (= half :left) (= half :top))))))))
 
 (defn drop-indicator
-  "Visual overlay showing where the drop will split"
+  "Visual overlay showing where the drop will split.
+   Renders a half-tile highlight with a label like 'Split above'."
   [half visible?]
   (when visible?
     [:div.iris-drop-indicator
@@ -46,8 +67,10 @@
      [:div.iris-drop-label-container
       [:span.iris-drop-label (get direction-labels half "Split")]]]))
 
-;; Global alt-key tracking (shared across all tiles)
-(defonce alt-held (r/atom false))
+;; --- Global state (shared across all tiles) ---
+
+(defonce alt-held
+  (r/atom false))
 
 (defonce _alt-listeners
   (do
@@ -59,33 +82,41 @@
       (fn [_] (reset! alt-held false)))
     true))
 
-;; Track source tile ID globally so target tiles can check no-op
+;; Track source tile ID globally so target tiles can detect no-ops
 (defonce drag-source-tile (atom nil))
 
-(defn tile-component
-  "Tile component with drag-drop and directional split overlay.
-   on-split signature: (on-split target-tile-id entity-id direction source-type)
-   source-type is :tile or :sidebar
-   parent-ctx is {:direction :sibling-id :child-index} or nil"
-  [node on-split focused? entities render-entity parent-ctx]
+(defn entity-tile-component
+  "Entity tile — a leaf node in the layout tree.
+
+   Renders the user's content via `render-entity-tile` and handles all
+   drag-drop interactions for tile rearrangement.
+
+   Arguments:
+   - node           : layout node {:type :tile :id str :entity-id str}
+   - on-split       : fn(target-tile-id entity-id direction source-type)
+   - focused?       : boolean, whether this tile has focus
+   - entities       : map of entity-id → entity data
+   - render-entity-tile : React component fn, receives entity data as props
+   - parent-ctx     : {:direction :sibling-id :child-index} from parent split"
+  [node on-split focused? entities render-entity-tile parent-ctx]
   (let [drag-over (r/atom false)
         closest-edge (r/atom nil)
         dragging (r/atom false)
         split-ref (atom on-split)
         tile-ref (atom nil)
         ctx-ref (atom parent-ctx)]
-    (fn [node on-split focused? entities render-entity parent-ctx]
+    (fn [node on-split focused? entities render-entity-tile parent-ctx]
       (reset! split-ref on-split)
       (reset! ctx-ref parent-ctx)
       (let [entity (get entities (:entity-id node))]
         [:div
          {:ref #(reset! tile-ref %)
-          :class (str "iris-tile"
-                      (when focused? " iris-tile-focused")
-                      (when (not focused?) " iris-tile-unfocused")
+          :class (str "iris-entity-tile"
+                      (when focused? " iris-entity-tile-focused")
+                      (when (not focused?) " iris-entity-tile-unfocused")
                       (when @drag-over " iris-drag-over")
                       (when @dragging " iris-dragging")
-                      (when @alt-held " iris-tile-grabbable"))
+                      (when @alt-held " iris-entity-tile-grabbable"))
           :style {:flex 1}
           :draggable true
           :on-drag-start
@@ -147,7 +178,7 @@
                                    (not (noop-rearrange? source-id half @ctx-ref)))
                           (@split-ref (:id node) (.-entityId data) direction :tile)))
 
-                      ;; Sidebar entity drag
+                      ;; Sidebar entity card drag
                       (= (.-source data) "sidebar")
                       (when-let [eid (.-entityId data)]
                         (@split-ref (:id node) eid direction :sidebar))))
@@ -157,9 +188,9 @@
             (reset! drag-over false)
             (reset! closest-edge nil))}
 
-         ;; Render entity
-         (when (and entity render-entity)
-           [:> render-entity entity])
+         ;; Render entity content
+         (when (and entity render-entity-tile)
+           [:> render-entity-tile entity])
 
          ;; Drop indicator overlay
          [drop-indicator @closest-edge @drag-over]]))))

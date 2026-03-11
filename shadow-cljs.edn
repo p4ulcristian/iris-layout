@@ -13,7 +13,6 @@
   :lib
   {:target :esm
    :output-dir "dist"
-   :modules {:iris-layout {:exports {Stage iris-layout.core/Stage
-                                     Stages iris-layout.core/Stages
-                                     StageCard iris-layout.core/StageCard}}}
+   :modules {:iris-layout {:exports {Sidebar iris-layout.core/Sidebar
+                                     Body iris-layout.core/Body}}}
    :js-options {:js-provider :import}}}}
