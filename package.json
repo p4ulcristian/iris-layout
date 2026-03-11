@@ -1,7 +1,7 @@
 {
   "name": "@p4ulcristian/iris-layout",
-  "version": "0.1.0",
-  "description": "Split-pane layout system with drag-drop, resizing, and multi-stage support",
+  "version": "0.2.0",
+  "description": "Tiling layout library for React — resizable splits, drag-drop rearrangement, multi-stage workspaces",
   "type": "module",
   "main": "dist/iris-layout.js",
   "module": "dist/iris-layout.js",
