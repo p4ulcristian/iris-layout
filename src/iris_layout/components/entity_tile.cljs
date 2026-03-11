@@ -2,13 +2,14 @@
   "Entity tile component — renders a single entity inside the Body layout.
 
    Each tile is a leaf node in the layout tree. It:
+   - Renders a header bar with entity name, drag handle, and close button
    - Renders user content via the `render-entity-tile` callback
-   - Supports Alt+drag to rearrange tiles within the layout
+   - Header is the drag handle for rearranging tiles
    - Shows directional drop overlay (split above/below/left/right)
    - Detects no-op rearrangements and hides the overlay
 
    Drag-drop protocol:
-   - Tiles are draggable only while Alt is held (grab cursor appears)
+   - The header bar is always draggable (grab cursor)
    - On drag-start, serializes {:tileId :entityId :source \"tile\"} as JSON
    - On drag-over, calculates nearest edge and shows half-tile highlight
    - On drop, calls `on-split` with target tile-id, entity-id, direction, source-type"
@@ -67,76 +68,45 @@
      [:div.iris-drop-label-container
       [:span.iris-drop-label (get direction-labels half "Split")]]]))
 
-;; --- Global state (shared across all tiles) ---
-
-(defonce alt-held
-  (r/atom false))
-
-(defonce _alt-listeners
-  (do
-    (.addEventListener js/document "keydown"
-      (fn [e] (when (.-altKey e)
-                (.preventDefault e)
-                (reset! alt-held true))))
-    (.addEventListener js/document "keyup"
-      (fn [e] (when (not (.-altKey e)) (reset! alt-held false))))
-    (.addEventListener js/window "blur"
-      (fn [_] (reset! alt-held false)))
-    true))
-
 ;; Track source tile ID globally so target tiles can detect no-ops
 (defonce drag-source-tile (atom nil))
 
 (defn entity-tile-component
   "Entity tile — a leaf node in the layout tree.
 
-   Renders the user's content via `render-entity-tile` and handles all
-   drag-drop interactions for tile rearrangement.
+   Renders a header bar (drag handle + name + close) and the user's content
+   via `render-entity-tile`.
 
    Arguments:
-   - node           : layout node {:type :tile :id str :entity-id str}
-   - on-split       : fn(target-tile-id entity-id direction source-type)
-   - focused?       : boolean, whether this tile has focus
-   - entities       : map of entity-id → entity data
+   - node               : layout node {:type :tile :id str :entity-id str}
+   - on-split           : fn(target-tile-id entity-id direction source-type half)
+   - on-close           : fn(entity-id) to remove tile from layout
+   - focused?           : boolean, whether this tile has focus
+   - entities           : map of entity-id → entity data
    - render-entity-tile : React component fn, receives entity data as props
-   - parent-ctx     : {:direction :sibling-id :child-index} from parent split"
-  [node on-split focused? entities render-entity-tile parent-ctx]
+   - parent-ctx         : {:direction :sibling-id :child-index} from parent split"
+  [node on-split on-close focused? entities render-entity-tile parent-ctx]
   (let [drag-over (r/atom false)
         closest-edge (r/atom nil)
         dragging (r/atom false)
         split-ref (atom on-split)
+        close-ref (atom on-close)
         tile-ref (atom nil)
         ctx-ref (atom parent-ctx)]
-    (fn [node on-split focused? entities render-entity-tile parent-ctx]
+    (fn [node on-split on-close focused? entities render-entity-tile parent-ctx]
       (reset! split-ref on-split)
+      (reset! close-ref on-close)
       (reset! ctx-ref parent-ctx)
-      (let [entity (get entities (:entity-id node))]
+      (let [entity (get entities (:entity-id node))
+            entity-name (or (:name entity) (:entity-id node))]
         [:div
          {:ref #(reset! tile-ref %)
           :class (str "iris-entity-tile"
                       (when focused? " iris-entity-tile-focused")
                       (when (not focused?) " iris-entity-tile-unfocused")
                       (when @drag-over " iris-drag-over")
-                      (when @dragging " iris-dragging")
-                      (when @alt-held " iris-entity-tile-grabbable"))
+                      (when @dragging " iris-dragging"))
           :style {:flex 1}
-          :draggable true
-          :on-drag-start
-          (fn [e]
-            (if (.-altKey e)
-              (do
-                (.setData (.-dataTransfer e) "text/plain"
-                          (js/JSON.stringify #js {:tileId (:id node)
-                                                  :entityId (:entity-id node)
-                                                  :source "tile"}))
-                (set! (.-effectAllowed (.-dataTransfer e)) "all")
-                (reset! drag-source-tile (:id node))
-                (reset! dragging true))
-              (.preventDefault e)))
-          :on-drag-end
-          (fn [_e]
-            (reset! dragging false)
-            (reset! drag-source-tile nil))
           :on-drag-over
           (fn [e]
             (.preventDefault e)
@@ -190,9 +160,34 @@
             (reset! drag-over false)
             (reset! closest-edge nil))}
 
+         ;; Header bar — drag handle + name + close
+         [:div.iris-entity-tile-header
+          {:draggable true
+           :on-drag-start
+           (fn [e]
+             (.setData (.-dataTransfer e) "text/plain"
+                       (js/JSON.stringify #js {:tileId (:id node)
+                                               :entityId (:entity-id node)
+                                               :source "tile"}))
+             (set! (.-effectAllowed (.-dataTransfer e)) "all")
+             (reset! drag-source-tile (:id node))
+             (reset! dragging true))
+           :on-drag-end
+           (fn [_e]
+             (reset! dragging false)
+             (reset! drag-source-tile nil))}
+          [:span.iris-entity-tile-header-name entity-name]
+          [:button.iris-entity-tile-header-close
+           {:on-click (fn [e]
+                        (.stopPropagation e)
+                        (when @close-ref
+                          (@close-ref (:entity-id node))))}
+           "\u00d7"]]
+
          ;; Render entity content
-         (when (and entity render-entity-tile)
-           [:> render-entity-tile entity])
+         [:div.iris-entity-tile-content
+          (when (and entity render-entity-tile)
+            [:> render-entity-tile entity])]
 
          ;; Drop indicator overlay
          [drop-indicator @closest-edge @drag-over]]))))

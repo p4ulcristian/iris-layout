@@ -16,20 +16,22 @@
 
    Arguments:
    - node               : layout node (tile or split)
-   - on-split           : fn(target-tile-id entity-id direction source-type)
+   - on-split           : fn(target-tile-id entity-id direction source-type half)
+   - on-close           : fn(entity-id) to remove tile from layout
    - on-ratio-change    : fn(split-id new-ratio)
    - active-entity      : entity-id of the focused entity (or nil)
    - entities           : map of entity-id → entity data
    - render-entity-tile : React component fn, receives entity data as props
    - parent-ctx         : (optional) {:direction :sibling-id :child-index}"
-  ([node on-split on-ratio-change active-entity entities render-entity-tile]
-   (entity-tile-group node on-split on-ratio-change active-entity entities render-entity-tile nil))
-  ([node on-split on-ratio-change active-entity entities render-entity-tile parent-ctx]
+  ([node on-split on-close on-ratio-change active-entity entities render-entity-tile]
+   (entity-tile-group node on-split on-close on-ratio-change active-entity entities render-entity-tile nil))
+  ([node on-split on-close on-ratio-change active-entity entities render-entity-tile parent-ctx]
    (case (layout/node-type node)
      :tile
      [entity-tile/entity-tile-component
       node
       on-split
+      on-close
       (= (:entity-id node) active-entity)
       entities
       render-entity-tile
@@ -49,9 +51,9 @@
        [:div.iris-entity-tile-group
         {:class (name direction)}
         [:div {:style {:flex ratio}}
-         [entity-tile-group child1 on-split on-ratio-change active-entity entities render-entity-tile ctx1]]
+         [entity-tile-group child1 on-split on-close on-ratio-change active-entity entities render-entity-tile ctx1]]
         [resizer/resizer direction (:id node) on-ratio-change]
         [:div {:style {:flex (- 1 ratio)}}
-         [entity-tile-group child2 on-split on-ratio-change active-entity entities render-entity-tile ctx2]]])
+         [entity-tile-group child2 on-split on-close on-ratio-change active-entity entities render-entity-tile ctx2]]])
 
      [:div "Unknown node type"])))

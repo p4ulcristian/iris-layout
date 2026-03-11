@@ -126,17 +126,59 @@
   /* Placeholder — user can style unfocused tiles */
 }
 
-.iris-entity-tile.iris-entity-tile-grabbable {
+/* --- Entity tile header --- */
+
+.iris-entity-tile-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: rgba(255,255,255,0.04);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
   cursor: grab;
   user-select: none;
+  flex-shrink: 0;
 }
 
-.iris-entity-tile.iris-entity-tile-grabbable > * {
-  pointer-events: none;
-}
-
-.iris-entity-tile.iris-entity-tile-grabbable:active {
+.iris-entity-tile-header:active {
   cursor: grabbing;
+}
+
+.iris-entity-tile-header-name {
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(255,255,255,0.7);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.iris-entity-tile-header-close {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.3);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 2px;
+  transition: color 150ms ease;
+  opacity: 0;
+  flex-shrink: 0;
+}
+
+.iris-entity-tile-header:hover .iris-entity-tile-header-close {
+  opacity: 1;
+}
+
+.iris-entity-tile-header-close:hover {
+  color: rgba(255,255,255,0.9);
+}
+
+.iris-entity-tile-content {
+  flex: 1;
+  overflow: auto;
+  min-height: 0;
 }
 
 .iris-entity-tile.iris-dragging {

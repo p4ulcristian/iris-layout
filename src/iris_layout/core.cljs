@@ -140,6 +140,13 @@
                                                 entity-id new-tile-id split-id before?))]
                              (when (and new-layout on-layout-change)
                                (on-layout-change new-layout))))))
+        handle-close (fn [entity-id]
+                       (let [{:keys [layout on-layout-change on-entity-close]} @props-ref
+                             new-layout (layout/remove-entity-from-layout layout entity-id)]
+                         (when on-layout-change
+                           (on-layout-change new-layout))
+                         (when on-entity-close
+                           (on-entity-close entity-id))))
         handle-ratio (fn [split-id new-ratio]
                        (let [{:keys [layout on-layout-change]} @props-ref
                              new-layout (layout/update-split-ratio layout split-id new-ratio)]
@@ -149,7 +156,7 @@
       (reset! props-ref props)
       [:div.iris-body-stage
        [entity-tile-group/entity-tile-group
-        layout handle-split handle-ratio active-entity entities render-entity-tile]])))
+        layout handle-split handle-close handle-ratio active-entity entities render-entity-tile]])))
 
 (defn- stage-index
   "Find the index of a stage by ID."
@@ -189,7 +196,7 @@
         slide-dir (atom "right")
         layer-refs (atom {})]
     (fn [{:keys [stages active-stage active-entity entities render-entity-tile
-                 on-stages-change on-active-stage-change on-active-entity-change]}]
+                 on-stages-change on-active-stage-change on-active-entity-change on-entity-close]}]
       (let [prev-idx (stage-index stages @prev-stage-id)
             curr-idx (stage-index stages active-stage)
             changed? (and @prev-stage-id (not= @prev-stage-id active-stage))]
@@ -229,7 +236,8 @@
                                            (assoc s :layout new-layout)
                                            s))
                                        stages)]
-                     (on-stages-change updated))))}]])]]))))
+                     (on-stages-change updated))))
+               :on-entity-close on-entity-close}]])]]))))
 
 ;; ============================================================
 ;; Sidebar — stage cards with entity cards
@@ -363,7 +371,7 @@
 (defn- body-wrapper
   "Wrapper that converts JS props to CLJS for body-component."
   [{:keys [stages activeStage activeEntity entities renderEntityTile
-           onStagesChange onActiveStageChange onActiveEntityChange]}]
+           onStagesChange onActiveStageChange onActiveEntityChange onEntityClose]}]
   [body-component
    {:stages (js->stages stages)
     :active-stage activeStage
@@ -374,7 +382,8 @@
                         (fn [new-stages]
                           (onStagesChange (stages->js new-stages))))
     :on-active-stage-change onActiveStageChange
-    :on-active-entity-change onActiveEntityChange}])
+    :on-active-entity-change onActiveEntityChange
+    :on-entity-close onEntityClose}])
 
 (defn- sidebar-wrapper
   "Wrapper that converts JS props to CLJS for sidebar-component."
