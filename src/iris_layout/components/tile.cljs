@@ -24,6 +24,19 @@
    :left "Split left"
    :right "Split right"})
 
+(defn- noop-rearrange?
+  "Check if dropping source-tile-id at `half` of this tile would be a no-op.
+   True when the source is the direct sibling in the same split direction
+   and the drop position would keep the same order."
+  [source-tile-id half parent-ctx]
+  (when parent-ctx
+    (let [{:keys [direction sibling-id child-index]} parent-ctx
+          drop-dir (half->direction half)]
+      (when (and (= source-tile-id sibling-id)
+                 (= drop-dir direction))
+        (or (and (= child-index 0) (or (= half :right) (= half :bottom)))
+            (and (= child-index 1) (or (= half :left) (= half :top))))))))
+
 (defn drop-indicator
   "Visual overlay showing where the drop will split"
   [half visible?]
@@ -46,18 +59,24 @@
       (fn [_] (reset! alt-held false)))
     true))
 
+;; Track source tile ID globally so target tiles can check no-op
+(defonce drag-source-tile (atom nil))
+
 (defn tile-component
   "Tile component with drag-drop and directional split overlay.
    on-split signature: (on-split target-tile-id entity-id direction source-type)
-   source-type is :tile or :sidebar"
-  [node on-split focused? entities render-entity]
+   source-type is :tile or :sidebar
+   parent-ctx is {:direction :sibling-id :child-index} or nil"
+  [node on-split focused? entities render-entity parent-ctx]
   (let [drag-over (r/atom false)
         closest-edge (r/atom nil)
         dragging (r/atom false)
         split-ref (atom on-split)
-        tile-ref (atom nil)]
-    (fn [node on-split focused? entities render-entity]
+        tile-ref (atom nil)
+        ctx-ref (atom parent-ctx)]
+    (fn [node on-split focused? entities render-entity parent-ctx]
       (reset! split-ref on-split)
+      (reset! ctx-ref parent-ctx)
       (let [entity (get entities (:entity-id node))]
         [:div
          {:ref #(reset! tile-ref %)
@@ -78,27 +97,33 @@
                                                   :entityId (:entity-id node)
                                                   :source "tile"}))
                 (set! (.-effectAllowed (.-dataTransfer e)) "all")
+                (reset! drag-source-tile (:id node))
                 (reset! dragging true))
               (.preventDefault e)))
           :on-drag-end
           (fn [_e]
-            (reset! dragging false))
+            (reset! dragging false)
+            (reset! drag-source-tile nil))
           :on-drag-over
           (fn [e]
             (.preventDefault e)
-            ;; Don't show overlay when dragging tile onto itself
             (if @dragging
+              ;; Source tile — no overlay on self
               (do (reset! drag-over false)
                   (reset! closest-edge nil))
               (when-let [el @tile-ref]
-                (let [half (calculate-half e el)]
-                  (reset! closest-edge half)
-                  (reset! drag-over true))))
-)
+                (let [half (calculate-half e el)
+                      source-id @drag-source-tile
+                      noop? (and source-id
+                                 (noop-rearrange? source-id half @ctx-ref))]
+                  (if noop?
+                    (do (reset! drag-over false)
+                        (reset! closest-edge nil))
+                    (do (reset! closest-edge half)
+                        (reset! drag-over true)))))))
           :on-drag-enter
           (fn [e]
-            (.preventDefault e)
-            (reset! drag-over true))
+            (.preventDefault e))
           :on-drag-leave
           (fn [e]
             (when (not (.contains (.-currentTarget e) (.-relatedTarget e)))
@@ -117,8 +142,10 @@
                     (cond
                       ;; Tile-to-tile rearrange
                       (and (= (.-source data) "tile") (.-entityId data))
-                      (when (not= (.-tileId data) (:id node))
-                        (@split-ref (:id node) (.-entityId data) direction :tile))
+                      (let [source-id (.-tileId data)]
+                        (when (and (not= source-id (:id node))
+                                   (not (noop-rearrange? source-id half @ctx-ref)))
+                          (@split-ref (:id node) (.-entityId data) direction :tile)))
 
                       ;; Sidebar entity drag
                       (= (.-source data) "sidebar")
