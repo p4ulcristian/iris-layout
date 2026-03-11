@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Iris Layout</title>
-  <link rel="stylesheet" href="./dist/styles.css?v=20" />
+  <link rel="stylesheet" href="./dist/styles.css?v=21" />
   <script type="importmap">
   {
     "imports": {
@@ -96,7 +96,7 @@
   <script type="module">
     import React, { useState, createElement as h } from 'react'
     import { createRoot } from 'react-dom/client'
-    import { Stage, Stages, Sidebar } from './dist/iris-layout.js?v=20'
+    import { Stages, StageCard } from './dist/iris-layout.js?v=21'
 
     const ENTITIES = {
       editor: { id: 'editor', name: 'editor.cljs', type: 'code', color: '#6366f1' },
@@ -227,15 +227,24 @@
       const activeStage = stagesData.find(s => s.id === activeStageId) || stagesData[0]
 
       return h('div', {className:'app'},
-        // Sidebar — library component
-        h(Sidebar, {
-          title: 'Iris Layout',
-          stages: stagesData,
-          activeStage: activeStageId,
-          entities: ENTITIES,
-          onActiveStageChange: setActiveStageId,
-          onStagesChange: setStagesData
-        }),
+        // Sidebar — composed from StageCard components
+        h('div', {className:'iris-sidebar'},
+          h('div', {className:'iris-sidebar-title'}, 'Iris Layout'),
+          h('div', {className:'iris-sidebar-section'},
+            h('div', {className:'iris-sidebar-heading'}, 'Stages'),
+            h('div', {className:'iris-stage-list'},
+              stagesData.map(s =>
+                h(StageCard, {
+                  key: s.id,
+                  stage: s,
+                  activeStage: activeStageId,
+                  entities: ENTITIES,
+                  onClick: () => setActiveStageId(s.id)
+                })
+              )
+            )
+          )
+        ),
         // Main area — Stages component with slide animation
         h('div', {className:'main-area'},
           h(Stages, {

@@ -2,7 +2,7 @@
   (:require [reagent.core :as r]
             [iris-layout.layout :as layout]
             [iris-layout.components.surface :as surface]
-            [iris-layout.components.sidebar :as sidebar]))
+            [iris-layout.components.stage-card :as stage-card]))
 
 ;; --- JS <-> CLJS boundary conversion ---
 
@@ -211,22 +211,21 @@
                             (onStagesChange (stages->js new-stages))))
       :on-active-stage-change onActiveStageChange}]))
 
-(defn- sidebar-wrapper [{:keys [title stages activeStage entities
-                                onActiveStageChange onStagesChange]}]
-  (let [clj-stages (js->stages stages)
+(defn- stage-card-wrapper [{:keys [stage activeStage entities onClick]}]
+  (let [clj-stage (when stage
+                    (let [obj (js->clj stage)]
+                      {:id    (get obj "id")
+                       :label (get obj "label")
+                       :layout (js->layout (get obj "layout"))}))
         clj-entities (js->entities entities)]
-    [sidebar/sidebar-component
-     {:title title
-      :stages clj-stages
-      :active-stage activeStage
+    [stage-card/stage-card-component
+     {:stage clj-stage
+      :active? (= (:id clj-stage) activeStage)
       :entities clj-entities
-      :on-active-stage-change onActiveStageChange
-      :on-stages-change (when onStagesChange
-                          (fn [new-stages]
-                            (onStagesChange (stages->js new-stages))))}]))
+      :on-click onClick}]))
 
 ;; --- Exported React components ---
 
 (def Stage (r/reactify-component stage-wrapper))
 (def Stages (r/reactify-component stages-wrapper))
-(def Sidebar (r/reactify-component sidebar-wrapper))
+(def StageCard (r/reactify-component stage-card-wrapper))

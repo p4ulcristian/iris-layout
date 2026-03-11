@@ -15,5 +15,5 @@
    :output-dir "dist"
    :modules {:iris-layout {:exports {Stage iris-layout.core/Stage
                                      Stages iris-layout.core/Stages
-                                     Sidebar iris-layout.core/Sidebar}}}
+                                     StageCard iris-layout.core/StageCard}}}
    :js-options {:js-provider :import}}}}
