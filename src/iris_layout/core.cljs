@@ -120,11 +120,12 @@
    :on-active-entity-change - fn(entity-id) for focus changes"
   [_]
   (let [props-ref (atom nil)
-        handle-split (fn [tile-id entity-id split-direction source-type]
+        handle-split (fn [tile-id entity-id split-direction source-type half]
                        (let [{:keys [layout on-layout-change]} @props-ref
                              target-tile (layout/find-tile layout tile-id)
                              same-tile? (and target-tile
-                                             (= (:entity-id target-tile) entity-id))]
+                                             (= (:entity-id target-tile) entity-id))
+                             before? (or (= half :left) (= half :top))]
                          (when-not same-tile?
                            (let [base-layout (if (= source-type :tile)
                                                (or (layout/remove-entity-from-layout layout entity-id)
@@ -136,7 +137,7 @@
                                  new-layout (when target-after
                                               (layout/split-tile
                                                 base-layout tile-id split-direction
-                                                entity-id new-tile-id split-id))]
+                                                entity-id new-tile-id split-id before?))]
                              (when (and new-layout on-layout-change)
                                (on-layout-change new-layout))))))
         handle-ratio (fn [split-id new-ratio]

@@ -75,7 +75,9 @@
 (defonce _alt-listeners
   (do
     (.addEventListener js/document "keydown"
-      (fn [e] (when (.-altKey e) (reset! alt-held true))))
+      (fn [e] (when (.-altKey e)
+                (.preventDefault e)
+                (reset! alt-held true))))
     (.addEventListener js/document "keyup"
       (fn [e] (when (not (.-altKey e)) (reset! alt-held false))))
     (.addEventListener js/window "blur"
@@ -176,12 +178,12 @@
                       (let [source-id (.-tileId data)]
                         (when (and (not= source-id (:id node))
                                    (not (noop-rearrange? source-id half @ctx-ref)))
-                          (@split-ref (:id node) (.-entityId data) direction :tile)))
+                          (@split-ref (:id node) (.-entityId data) direction :tile half)))
 
                       ;; Sidebar entity card drag
                       (= (.-source data) "sidebar")
                       (when-let [eid (.-entityId data)]
-                        (@split-ref (:id node) eid direction :sidebar))))
+                        (@split-ref (:id node) eid direction :sidebar half))))
                   (catch :default _
                     (when (and raw (not= raw ""))
                       (@split-ref (:id node) raw direction :sidebar))))))

@@ -50,12 +50,16 @@
     :else tree))
 
 (defn split-tile
-  "Insert a split at tile position with new entity"
-  [tree tile-id direction new-entity-id new-tile-id split-id]
+  "Insert a split at tile position with new entity.
+   When before? is true, new tile goes first (left/top)."
+  [tree tile-id direction new-entity-id new-tile-id split-id & [before?]]
   (let [existing-tile (find-tile tree tile-id)]
     (when existing-tile
       (let [new-tile (create-tile new-tile-id new-entity-id)
-            new-split (create-split split-id direction existing-tile new-tile 0.5)]
+            [child1 child2] (if before?
+                              [new-tile existing-tile]
+                              [existing-tile new-tile])
+            new-split (create-split split-id direction child1 child2 0.5)]
         (replace-node tree tile-id new-split)))))
 
 (defn get-parent-split
