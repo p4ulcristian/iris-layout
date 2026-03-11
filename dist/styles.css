@@ -74,10 +74,10 @@
   box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
 }
 
-/* Resizer */
+/* Resizer — invisible by default, visible on hover */
 .iris-resizer {
-  background: rgba(255,255,255,0.1);
-  transition: background 150ms ease;
+  background: transparent;
+  transition: background 200ms ease;
   z-index: 100;
   position: relative;
 }
@@ -87,19 +87,19 @@
 }
 
 .iris-resizer.horizontal {
-  width: 8px;
+  width: 6px;
   cursor: col-resize;
-  margin: 0 -4px;
+  margin: 0 -3px;
 }
 
 .iris-resizer.vertical {
-  height: 8px;
+  height: 6px;
   cursor: row-resize;
-  margin: -4px 0;
+  margin: -3px 0;
 }
 
 .iris-resizer.dragging {
-  background: rgba(99, 102, 241, 0.6);
+  background: rgba(99, 102, 241, 0.5);
 }
 
 /* Stages tabs */
@@ -107,6 +107,8 @@
   display: flex;
   flex-direction: column;
   flex: 1;
+  overflow: hidden;
+  position: relative;
 }
 
 .iris-stage-tabs {
@@ -139,10 +141,10 @@
 /* Animations */
 
 /* Stage slide animations */
-@keyframes iris-stage-slide-in {
+@keyframes iris-slide-from-right {
   from {
     opacity: 0;
-    transform: translateX(40px);
+    transform: translateX(80px);
   }
   to {
     opacity: 1;
@@ -150,10 +152,10 @@
   }
 }
 
-@keyframes iris-stage-slide-out {
+@keyframes iris-slide-from-left {
   from {
     opacity: 0;
-    transform: translateX(-40px);
+    transform: translateX(-80px);
   }
   to {
     opacity: 1;
@@ -170,11 +172,11 @@
 }
 
 .iris-stage-content.iris-slide-right {
-  animation: iris-stage-slide-in 350ms cubic-bezier(0.22, 1, 0.36, 1);
+  animation: iris-slide-from-right 400ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .iris-stage-content.iris-slide-left {
-  animation: iris-stage-slide-out 350ms cubic-bezier(0.22, 1, 0.36, 1);
+  animation: iris-slide-from-left 400ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 /* Tile enter animation */

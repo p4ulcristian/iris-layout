@@ -112,14 +112,14 @@
    :on-active-stage-change - fn(stage-id) called on stage switch"
   [_]
   (let [prev-stage-id (atom nil)
-        slide-dir (r/atom "right")]
+        slide-dir (atom "right")]
     (fn [{:keys [stages active-stage entities render-entity
                  on-stages-change on-active-stage-change]}]
       (let [current-stage (or (some #(when (= (:id %) active-stage) %) stages)
                               (first stages))
             prev-idx (stage-index stages @prev-stage-id)
             curr-idx (stage-index stages active-stage)]
-        ;; Determine slide direction
+        ;; Determine slide direction (plain atom — no extra render)
         (when (and @prev-stage-id (not= @prev-stage-id active-stage))
           (reset! slide-dir (if (and prev-idx curr-idx (> curr-idx prev-idx))
                               "right" "left")))
