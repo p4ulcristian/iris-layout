@@ -138,20 +138,43 @@
 
 /* Animations */
 
-/* Stage enter animation */
-@keyframes iris-stage-enter {
+/* Stage slide animations */
+@keyframes iris-stage-slide-in {
   from {
     opacity: 0;
-    transform: scale(0.98);
+    transform: translateX(40px);
   }
   to {
     opacity: 1;
-    transform: scale(1);
+    transform: translateX(0);
   }
 }
 
-.iris-stage {
-  animation: iris-stage-enter 300ms cubic-bezier(0.22, 1, 0.36, 1);
+@keyframes iris-stage-slide-out {
+  from {
+    opacity: 0;
+    transform: translateX(-40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Stage content wrapper for slide animation */
+.iris-stage-content {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+}
+
+.iris-stage-content.iris-slide-right {
+  animation: iris-stage-slide-in 350ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.iris-stage-content.iris-slide-left {
+  animation: iris-stage-slide-out 350ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 /* Tile enter animation */

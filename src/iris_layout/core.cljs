@@ -97,6 +97,11 @@
       [:div.iris-stage
        [surface/surface layout handle-split handle-ratio focused-tile entities render-entity]])))
 
+(defn- stage-index
+  "Find index of stage by id"
+  [stages id]
+  (first (keep-indexed (fn [i s] (when (= (:id s) id) i)) stages)))
+
 (defn stages-component
   "Multi-stage container. Props map:
    :stages              - vector of {:id :label :layout}
@@ -105,34 +110,46 @@
    :render-entity       - reagent component fn [entity] -> hiccup
    :on-stages-change    - fn(new-stages) called on layout mutations
    :on-active-stage-change - fn(stage-id) called on stage switch"
-  [{:keys [stages active-stage entities render-entity
-           on-stages-change on-active-stage-change]}]
-  (let [current-stage (or (some #(when (= (:id %) active-stage) %) stages)
-                          (first stages))]
-    [:div.iris-stages
-     [:div.iris-stage-tabs
-      (for [stage stages]
-        ^{:key (:id stage)}
-        [:button.iris-stage-tab
-         {:class (when (= (:id stage) (:id current-stage)) "iris-stage-tab-active")
-          :on-click #(when on-active-stage-change
-                       (on-active-stage-change (:id stage)))}
-         (:label stage)])]
-     (when current-stage
-       [stage-component
-        {:layout (:layout current-stage)
-         :entities entities
-         :render-entity render-entity
-         :focused-tile nil
-         :on-layout-change
-         (fn [new-layout]
-           (when on-stages-change
-             (let [updated (mapv (fn [s]
-                                   (if (= (:id s) (:id current-stage))
-                                     (assoc s :layout new-layout)
-                                     s))
-                                 stages)]
-               (on-stages-change updated))))}])]))
+  [_]
+  (let [prev-stage-id (atom nil)
+        slide-dir (r/atom "right")]
+    (fn [{:keys [stages active-stage entities render-entity
+                 on-stages-change on-active-stage-change]}]
+      (let [current-stage (or (some #(when (= (:id %) active-stage) %) stages)
+                              (first stages))
+            prev-idx (stage-index stages @prev-stage-id)
+            curr-idx (stage-index stages active-stage)]
+        ;; Determine slide direction
+        (when (and @prev-stage-id (not= @prev-stage-id active-stage))
+          (reset! slide-dir (if (and prev-idx curr-idx (> curr-idx prev-idx))
+                              "right" "left")))
+        (reset! prev-stage-id active-stage)
+        [:div.iris-stages
+         [:div.iris-stage-tabs
+          (for [stage stages]
+            ^{:key (:id stage)}
+            [:button.iris-stage-tab
+             {:class (when (= (:id stage) (:id current-stage)) "iris-stage-tab-active")
+              :on-click #(when on-active-stage-change
+                           (on-active-stage-change (:id stage)))}
+             (:label stage)])]
+         (when current-stage
+           ^{:key (:id current-stage)}
+           [:div {:class (str "iris-stage-content iris-slide-" @slide-dir)}
+            [stage-component
+             {:layout (:layout current-stage)
+              :entities entities
+              :render-entity render-entity
+              :focused-tile nil
+              :on-layout-change
+              (fn [new-layout]
+                (when on-stages-change
+                  (let [updated (mapv (fn [s]
+                                        (if (= (:id s) (:id current-stage))
+                                          (assoc s :layout new-layout)
+                                          s))
+                                      stages)]
+                    (on-stages-change updated))))}]])]))))
 
 ;; --- React-facing wrappers (for JS consumers) ---
 ;; reactify-component auto-converts JS props to CLJS map with keyword keys.

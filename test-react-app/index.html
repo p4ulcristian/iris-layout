@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Iris Layout</title>
-  <link rel="stylesheet" href="./dist/styles.css?v=2" />
+  <link rel="stylesheet" href="./dist/styles.css?v=3" />
   <script type="importmap">
   {
     "imports": {
@@ -109,6 +109,8 @@
       width: 6px; height: 6px;
       border-radius: 50%;
     }
+    /* Hide built-in stage tabs since we have custom sidebar tabs */
+    .iris-stage-tabs { display: none; }
     .main-area {
       flex: 1;
       display: flex;
@@ -175,7 +177,7 @@
   <script type="module">
     import React, { useState, createElement as h } from 'react'
     import { createRoot } from 'react-dom/client'
-    import { Stage } from './dist/iris-layout.js'
+    import { Stage, Stages } from './dist/iris-layout.js'
 
     const ENTITIES = {
       editor: { id: 'editor', name: 'editor.cljs', type: 'code', color: '#6366f1' },
@@ -344,18 +346,15 @@
             )
           )
         ),
-        // Main area — active stage
+        // Main area — Stages component with slide animation
         h('div', {className:'main-area'},
-          h(Stage, {
-            key: activeStageId,
-            layout: activeStage.layout,
+          h(Stages, {
+            stages: stagesData,
+            activeStage: activeStageId,
             entities: ENTITIES,
             renderEntity: EntityRenderer,
-            onLayoutChange: (newLayout) => {
-              setStagesData(prev =>
-                prev.map(s => s.id === activeStageId ? {...s, layout: newLayout} : s)
-              )
-            }
+            onStagesChange: setStagesData,
+            onActiveStageChange: setActiveStageId
           })
         )
       )
