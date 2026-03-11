@@ -49,7 +49,9 @@
         (get obj "direction") (assoc :direction (keyword (get obj "direction")))
         (get obj "ratio")     (assoc :ratio (get obj "ratio"))
         (get obj "children")  (assoc :children (mapv js->layout (get obj "children")))
-        (get obj "entityId")  (assoc :entity-id (get obj "entityId"))))))
+        (or (get obj "entityId")
+            (get obj "entity-id")) (assoc :entity-id (or (get obj "entityId")
+                                                          (get obj "entity-id")))))))
 
 (defn layout->js
   "Convert a CLJS layout map to a JS object.

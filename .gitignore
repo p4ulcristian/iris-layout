@@ -5,6 +5,7 @@ node_modules/
 public/js/
 test-react-app/node_modules/
 test-react-app/dist/
+dist/cljs-runtime/
 .playwright-mcp/
 *.DS_Store
 ._*
