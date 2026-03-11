@@ -12,6 +12,17 @@
    - .iris-drop-*              Drop indicator overlay
    ============================================================ */
 
+/* --- Global: disable text selection across all layout elements --- */
+
+.iris-body,
+.iris-body *,
+.iris-sidebar,
+.iris-sidebar * {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
 /* --- Body --- */
 
 .iris-body {
@@ -264,7 +275,7 @@
 }
 
 .iris-resizer:hover {
-  background: rgba(99, 102, 241, 0.4);
+  background: transparent;
 }
 
 .iris-resizer.horizontal {
@@ -280,7 +291,16 @@
 }
 
 .iris-resizer.dragging {
-  background: rgba(99, 102, 241, 0.5);
+  background: transparent;
+}
+
+/* Prevent all selection during resize */
+body.iris-resizing,
+body.iris-resizing * {
+  -webkit-user-select: none !important;
+  user-select: none !important;
+  -webkit-touch-callout: none !important;
+  cursor: inherit;
 }
 
 /* Touch: bigger hit area for resizer */

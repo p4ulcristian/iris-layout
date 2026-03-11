@@ -11,6 +11,7 @@
       (let [start-resize
             (fn [target get-pos]
               (reset! dragging true)
+              (.add (.-classList js/document.body) "iris-resizing")
               (let [parent (.-parentElement target)]
                 ;; Add iris-dragging class to parent to disable flex transitions
                 (.add (.-classList parent) "iris-dragging")
@@ -29,6 +30,7 @@
 
                         (handle-mouse-up [_e]
                           (reset! dragging false)
+                          (.remove (.-classList js/document.body) "iris-resizing")
                           (.remove (.-classList parent) "iris-dragging")
                           (.removeEventListener js/document "mousemove" handle-mouse-move)
                           (.removeEventListener js/document "mouseup" handle-mouse-up))
@@ -40,6 +42,7 @@
 
                         (handle-touch-end [_e]
                           (reset! dragging false)
+                          (.remove (.-classList js/document.body) "iris-resizing")
                           (.remove (.-classList parent) "iris-dragging")
                           (.removeEventListener js/document "touchmove" handle-touch-move)
                           (.removeEventListener js/document "touchend" handle-touch-end))]
