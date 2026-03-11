@@ -1,0 +1,32 @@
+{
+  "name": "@p4ulcristian/iris-layout",
+  "version": "0.1.0",
+  "description": "Split-pane layout system with drag-drop, resizing, and multi-stage support",
+  "type": "module",
+  "main": "dist/iris-layout.js",
+  "module": "dist/iris-layout.js",
+  "exports": {
+    ".": {
+      "import": "./dist/iris-layout.js"
+    },
+    "./styles.css": "./dist/styles.css"
+  },
+  "files": [
+    "dist/"
+  ],
+  "peerDependencies": {
+    "react": ">=17.0.0",
+    "react-dom": ">=17.0.0"
+  },
+  "devDependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "shadow-cljs": "^2.28.0"
+  },
+  "scripts": {
+    "watch": "shadow-cljs watch app",
+    "watch:lib": "shadow-cljs watch lib",
+    "release": "shadow-cljs release lib",
+    "release:demo": "shadow-cljs release app"
+  }
+}

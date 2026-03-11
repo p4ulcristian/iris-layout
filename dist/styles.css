@@ -1,0 +1,134 @@
+/* iris-layout library styles */
+
+.iris-stage {
+  display: flex;
+  flex: 1;
+  position: relative;
+}
+
+.iris-split-container {
+  display: flex;
+  flex: 1;
+  gap: 4px;
+  position: relative;
+}
+
+.iris-split-container.horizontal {
+  flex-direction: row;
+}
+
+.iris-split-container.vertical {
+  flex-direction: column;
+}
+
+/* Tile */
+.iris-tile {
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+  backdrop-filter: blur(30px) saturate(180%);
+  background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05));
+  border: 1px solid rgba(255,255,255,0.15);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  transition: transform 300ms cubic-bezier(0.22, 1, 0.36, 1),
+              opacity 200ms ease,
+              box-shadow 200ms ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.iris-tile:hover {
+  border-color: rgba(255,255,255,0.25);
+}
+
+.iris-tile-focused {
+  box-shadow: 0 12px 40px rgba(99, 102, 241, 0.4);
+  border-color: rgba(99, 102, 241, 0.5);
+  z-index: 10;
+}
+
+.iris-tile-unfocused {
+  opacity: 0.7;
+  filter: saturate(0.8);
+}
+
+.iris-drag-over {
+  border-color: rgba(99, 102, 241, 0.6);
+  box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
+}
+
+/* Resizer */
+.iris-resizer {
+  background: rgba(255,255,255,0.1);
+  transition: background 150ms ease;
+  z-index: 100;
+  position: relative;
+}
+
+.iris-resizer:hover {
+  background: rgba(99, 102, 241, 0.4);
+}
+
+.iris-resizer.horizontal {
+  width: 8px;
+  cursor: col-resize;
+  margin: 0 -4px;
+}
+
+.iris-resizer.vertical {
+  height: 8px;
+  cursor: row-resize;
+  margin: -4px 0;
+}
+
+.iris-resizer.dragging {
+  background: rgba(99, 102, 241, 0.6);
+}
+
+/* Stages tabs */
+.iris-stages {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.iris-stage-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 8px;
+}
+
+.iris-stage-tab {
+  padding: 6px 16px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 6px;
+  color: rgba(255,255,255,0.7);
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 150ms ease;
+}
+
+.iris-stage-tab:hover {
+  background: rgba(255,255,255,0.1);
+}
+
+.iris-stage-tab-active {
+  background: rgba(99, 102, 241, 0.3);
+  border-color: rgba(99, 102, 241, 0.5);
+  color: #ffffff;
+}
+
+/* Animation */
+@keyframes iris-glow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(99, 102, 241, 0.6);
+  }
+}
+
+.iris-tile.iris-animating {
+  animation: iris-glow 600ms ease-in-out;
+}

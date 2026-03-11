@@ -1,0 +1,10 @@
+node_modules/
+.shadow-cljs/
+.cpcache/
+.nrepl-port
+public/js/
+test-react-app/node_modules/
+test-react-app/dist/
+.playwright-mcp/
+*.DS_Store
+._*
