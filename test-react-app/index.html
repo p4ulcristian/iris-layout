@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Iris Layout</title>
-  <link rel="stylesheet" href="./dist/styles.css?v=26" />
+  <link rel="stylesheet" href="./dist/styles.css?v=27" />
   <script type="importmap">
   {
     "imports": {
@@ -26,44 +26,14 @@
     }
     .app {
       display: flex;
+      flex-direction: column;
       height: 100vh;
     }
-    .main-area {
+.main-area {
       flex: 1;
       display: flex;
-      padding: 12px;
-      height: 100vh;
       min-height: 0;
       overflow: hidden;
-    }
-
-    /* Custom sidebar chrome (user's responsibility to style) */
-    .my-sidebar {
-      width: 260px;
-      min-width: 260px;
-      background: rgba(0,0,0,0.3);
-      backdrop-filter: blur(20px);
-      border-right: 1px solid rgba(255,255,255,0.08);
-      display: flex;
-      flex-direction: column;
-      padding: 20px 16px;
-      gap: 16px;
-      overflow-y: auto;
-    }
-    .my-sidebar-title {
-      font-size: 20px;
-      font-weight: 700;
-      letter-spacing: -0.5px;
-      background: linear-gradient(135deg, #818cf8, #6366f1);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-    .my-sidebar-heading {
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 1.5px;
-      color: rgba(255,255,255,0.4);
-      margin-bottom: 6px;
     }
 
     /* Entity tile renderers */
@@ -117,6 +87,17 @@
     .terminal-body .prompt { color: #82aaff; }
     .terminal-body .output { color: rgba(255,255,255,0.5); }
     .terminal-body .success { color: #c3e88d; }
+
+    /* Color each workspace by position for debugging */
+    .iris-body-layer[data-position="0,0"]  { background: rgba(99, 102, 241, 0.15); }
+    .iris-body-layer[data-position="1,0"]  { background: rgba(16, 185, 129, 0.15); }
+    .iris-body-layer[data-position="-1,0"] { background: rgba(245, 158, 11, 0.15); }
+    .iris-body-layer[data-position="0,1"]  { background: rgba(236, 72, 153, 0.15); }
+    .iris-body-layer[data-position="0,-1"] { background: rgba(139, 92, 246, 0.15); }
+    .iris-body-layer[data-position="2,0"]  { background: rgba(239, 68, 68, 0.15); }
+    .iris-body-layer[data-position="-2,0"] { background: rgba(6, 182, 212, 0.15); }
+    .iris-body-layer[data-position="0,2"]  { background: rgba(132, 204, 22, 0.15); }
+    .iris-body-layer[data-position="0,-2"] { background: rgba(251, 146, 60, 0.15); }
   </style>
 </head>
 <body>
@@ -124,7 +105,7 @@
   <script type="module">
     import React, { useState, createElement as h } from 'react'
     import { createRoot } from 'react-dom/client'
-    import { Sidebar, Body } from './dist/iris-layout.js?v=26'
+    import { Grid } from './dist/iris-layout.js?v=27'
 
     const ENTITIES = {
       editor: { id: 'editor', name: 'editor.cljs', type: 'code', color: '#6366f1' },
@@ -134,10 +115,8 @@
       repl: { id: 'repl', name: 'REPL', type: 'repl', color: '#8b5cf6' },
     }
 
-    const STAGES = [
-      {
-        id: 'coding',
-        label: 'Coding',
+    const INITIAL_WORKSPACES = {
+      '0,0': {
         layout: {
           type: 'split', id: 's1', direction: 'horizontal', ratio: 0.6,
           children: [
@@ -151,38 +130,27 @@
           ]
         }
       },
-      {
-        id: 'debug',
-        label: 'Debug',
+      '1,0': {
         layout: {
           type: 'split', id: 's3', direction: 'horizontal', ratio: 0.5,
           children: [
-            { type: 'split', id: 's4', direction: 'vertical', ratio: 0.5,
-              children: [
-                { type: 'tile', id: 't4', entityId: 'editor' },
-                { type: 'tile', id: 't5', entityId: 'terminal' },
-              ]
-            },
-            { type: 'tile', id: 't6', entityId: 'browser' }
+            { type: 'tile', id: 't4', entityId: 'editor' },
+            { type: 'tile', id: 't5', entityId: 'browser' },
           ]
         }
       },
-      {
-        id: 'notes',
-        label: 'Notes',
-        layout: { type: 'tile', id: 't7', entityId: 'notes' }
+      '0,1': {
+        layout: { type: 'tile', id: 't6', entityId: 'notes' }
+      },
+      '1,1': {
+        layout: {
+          type: 'split', id: 's4', direction: 'vertical', ratio: 0.5,
+          children: [
+            { type: 'tile', id: 't7', entityId: 'terminal' },
+            { type: 'tile', id: 't8', entityId: 'repl' },
+          ]
+        }
       }
-    ]
-
-    // --- Entity card (compact, for Sidebar) ---
-    function EntityCard(props) {
-      return h('div', {style: {display:'flex', alignItems:'center', gap: 6}},
-        h('span', {style: {
-          width: 5, height: 5, borderRadius: '50%',
-          background: props.color, flexShrink: 0
-        }}),
-        props.name
-      )
     }
 
     // --- Entity tile renderers (full content, for Body) ---
@@ -261,36 +229,22 @@
     }
 
     function App() {
-      const [activeStage, setActiveStage] = useState('coding')
+      const [workspaces, setWorkspaces] = useState(INITIAL_WORKSPACES)
+      const [activePosition, setActivePosition] = useState([0, 0])
       const [activeEntity, setActiveEntity] = useState(null)
-      const [stages, setStages] = useState(STAGES)
-
-      // Shared props — same object goes to both Sidebar and Body
-      const layoutProps = {
-        stages,
-        activeStage,
-        activeEntity,
-        entities: ENTITIES,
-        onStagesChange: setStages,
-        onActiveStageChange: setActiveStage,
-        onActiveEntityChange: setActiveEntity,
-        onEntityClose: (stageId, entityId) => {
-          console.log('close', stageId, entityId)
-        },
-      }
 
       return h('div', {className:'app'},
-        // Sidebar — custom chrome wrapping the library Sidebar
-        h('div', {className:'my-sidebar'},
-          h('div', {className:'my-sidebar-title'}, 'Iris Layout'),
-          h('div', null,
-            h('div', {className:'my-sidebar-heading'}, 'Stages'),
-            h(Sidebar, { ...layoutProps, renderEntityCard: EntityCard })
-          )
-        ),
-        // Body — layout surface
         h('div', {className:'main-area'},
-          h(Body, { ...layoutProps, renderEntityTile: EntityTile })
+          h(Grid, {
+            workspaces,
+            activePosition,
+            activeEntity,
+            entities: ENTITIES,
+            renderEntityTile: EntityTile,
+            onWorkspacesChange: setWorkspaces,
+            onActivePositionChange: setActivePosition,
+            onActiveEntityChange: setActiveEntity,
+          })
         )
       )
     }

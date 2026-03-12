@@ -14,5 +14,6 @@
   {:target :esm
    :output-dir "dist"
    :modules {:iris-layout {:exports {Sidebar iris-layout.core/Sidebar
-                                     Body iris-layout.core/Body}}}
+                                     Body iris-layout.core/Body
+                                     Grid iris-layout.core/Grid}}}
    :js-options {:js-provider :import}}}}

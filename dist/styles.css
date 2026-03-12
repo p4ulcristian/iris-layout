@@ -26,11 +26,15 @@
 /* --- Body --- */
 
 .iris-body {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 32px 1fr 32px;
+  grid-template-rows: 32px 1fr 32px;
+  grid-template-areas:
+    ".    top    ."
+    "left center right"
+    ".    bottom .";
   flex: 1;
   overflow: hidden;
-  position: relative;
   min-width: 0;
 }
 
@@ -46,8 +50,8 @@
 
 /* Stacked layers — all stages rendered, only active is visible */
 .iris-body-stack {
+  grid-area: center;
   position: relative;
-  flex: 1;
   min-height: 0;
   overflow: hidden;
 }
@@ -68,7 +72,76 @@
   z-index: 1;
 }
 
-/* Stage slide animations — vertical based on stage order */
+.iris-body-layer.iris-body-layer-exiting {
+  opacity: 1;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Navigation edge buttons */
+.iris-nav-edge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  background: rgba(255,255,255,0.03);
+  transition: background 200ms ease;
+}
+
+.iris-nav-edge:hover {
+  background: rgba(255,255,255,0.08);
+}
+
+.iris-nav-arrow {
+  color: rgba(255,255,255,0.3);
+  font-size: 18px;
+  font-weight: 300;
+  line-height: 1;
+  transition: color 200ms ease;
+}
+
+.iris-nav-edge:hover .iris-nav-arrow {
+  color: rgba(255,255,255,0.8);
+}
+
+.iris-nav-hidden {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.iris-nav-left {
+  grid-area: left;
+}
+
+.iris-nav-right {
+  grid-area: right;
+}
+
+.iris-nav-top {
+  grid-area: top;
+}
+
+.iris-nav-top .iris-nav-arrow,
+.iris-nav-bottom .iris-nav-arrow {
+  transform: rotate(90deg);
+}
+
+.iris-nav-bottom {
+  grid-area: bottom;
+}
+
+/* Empty workspace placeholder */
+.iris-empty-workspace {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  color: rgba(255,255,255,0.2);
+  font-size: 24px;
+  font-weight: 300;
+}
+
+/* Slide animations — directional based on navigation */
 @keyframes iris-slide-from-bottom {
   from { transform: translateY(80px); }
   to   { transform: translateY(0); }
@@ -77,6 +150,37 @@
 @keyframes iris-slide-from-top {
   from { transform: translateY(-80px); }
   to   { transform: translateY(0); }
+}
+
+@keyframes iris-slide-from-left {
+  from { transform: translateX(-80px); }
+  to   { transform: translateX(0); }
+}
+
+@keyframes iris-slide-from-right {
+  from { transform: translateX(80px); }
+  to   { transform: translateX(0); }
+}
+
+/* Exit animations — outgoing workspace slides away */
+@keyframes iris-slide-out-left {
+  from { transform: translateX(0); opacity: 1; }
+  to   { transform: translateX(-80px); opacity: 0; }
+}
+
+@keyframes iris-slide-out-right {
+  from { transform: translateX(0); opacity: 1; }
+  to   { transform: translateX(80px); opacity: 0; }
+}
+
+@keyframes iris-slide-out-top {
+  from { transform: translateY(0); opacity: 1; }
+  to   { transform: translateY(-80px); opacity: 0; }
+}
+
+@keyframes iris-slide-out-bottom {
+  from { transform: translateY(0); opacity: 1; }
+  to   { transform: translateY(80px); opacity: 0; }
 }
 
 /* --- Entity tile group (split container) --- */
