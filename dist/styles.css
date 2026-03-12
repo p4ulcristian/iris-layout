@@ -208,11 +208,9 @@
   min-height: 0;
   min-width: 0;
   overflow: hidden;
-  border: 1px solid rgba(255,255,255,0.04);
 }
 
 .iris-grid-cell-active {
-  border-color: rgba(99, 102, 241, 0.3);
 }
 
 .iris-grid-zoomed .iris-grid-cell-active {
