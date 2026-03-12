@@ -23,6 +23,10 @@
 (defonce hover-target (r/atom nil))
 ;; Shape: {:tile-el DOM :tile-id str :half keyword} or nil
 
+;; Nav edge target — tracks when touch hovers over a nav edge during drag
+(defonce nav-edge-target (r/atom nil))
+;; Shape: :left | :right | :up | :down | nil
+
 ;; Long-press pending state (not reactive, internal only)
 (defonce ^:private pending (atom nil))
 ;; Shape: {:timer-id int :start-x num :start-y num :tile-id str :entity-id str}
@@ -124,13 +128,26 @@
         (set! (.-top (.-style ghost)) (str (- y 20) "px")))
       ;; Hide ghost briefly to find element underneath
       (when ghost (set! (.-display (.-style ghost)) "none"))
-      (let [tile-el (find-tile-element x y)]
+      (let [el-under (js/document.elementFromPoint x y)
+            nav-el (when el-under (.closest el-under ".iris-nav-edge"))
+            tile-el (find-tile-element x y)]
         (when ghost (set! (.-display (.-style ghost)) ""))
-        (if tile-el
-          (let [half (calculate-half-xy x y tile-el)
-                tile-id (.getAttribute tile-el "data-tile-id")]
-            (reset! hover-target {:tile-el tile-el :tile-id tile-id :half half}))
-          (reset! hover-target nil))))))
+        (if nav-el
+          (let [dir (cond
+                      (.contains (.-classList nav-el) "iris-nav-left") :left
+                      (.contains (.-classList nav-el) "iris-nav-right") :right
+                      (.contains (.-classList nav-el) "iris-nav-top") :up
+                      (.contains (.-classList nav-el) "iris-nav-bottom") :down
+                      :else nil)]
+            (reset! nav-edge-target dir)
+            (reset! hover-target nil))
+          (do
+            (reset! nav-edge-target nil)
+            (if tile-el
+              (let [half (calculate-half-xy x y tile-el)
+                    tile-id (.getAttribute tile-el "data-tile-id")]
+                (reset! hover-target {:tile-el tile-el :tile-id tile-id :half half}))
+              (reset! hover-target nil))))))))
 
 (defn end-drag!
   "End touch drag — return the drop target info and clean up."
@@ -142,6 +159,7 @@
       (.remove ghost))
     (reset! touch-state nil)
     (reset! hover-target nil)
+    (reset! nav-edge-target nil)
     ;; Return drop info
     (when (and state target)
       {:source-tile-id (:tile-id state)

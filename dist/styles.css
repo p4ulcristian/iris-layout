@@ -84,12 +84,13 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  background: rgba(255,255,255,0.03);
+  background: transparent;
   transition: background 200ms ease;
+  z-index: 2;
 }
 
 .iris-nav-edge:hover {
-  background: rgba(255,255,255,0.08);
+  background: transparent;
 }
 
 .iris-nav-arrow {
@@ -107,6 +108,18 @@
 .iris-nav-hidden {
   visibility: hidden;
   pointer-events: none;
+}
+
+/* Nav edge drag-over highlight */
+.iris-nav-drag-over {
+  background: rgba(99, 102, 241, 0.25) !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+}
+
+.iris-nav-drag-over .iris-nav-arrow {
+  color: rgba(99, 102, 241, 0.9);
+  transform: scale(1.4);
 }
 
 .iris-nav-left {
@@ -160,7 +173,6 @@
 .iris-grid-center {
   grid-area: center;
   position: relative;
-  overflow: hidden;
   min-height: 0;
   min-width: 0;
 }
@@ -182,6 +194,11 @@
 
 .iris-grid-cell-active {
   border-color: rgba(99, 102, 241, 0.3);
+}
+
+.iris-grid-zoomed .iris-grid-cell-active {
+  border-color: rgba(234, 179, 8, 0.6);
+  box-shadow: 0 0 24px rgba(234, 179, 8, 0.4), inset 0 0 12px rgba(234, 179, 8, 0.1);
 }
 
 /* Slide animations — directional based on navigation */

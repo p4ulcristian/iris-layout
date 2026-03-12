@@ -6,4 +6,7 @@ export default defineConfig({
   server: {
     allowedHosts: ['iris-os.irisdoes.work', '5173.irisdoes.work'],
   },
+  optimizeDeps: {
+    exclude: ['iris-layout'],
+  },
 })

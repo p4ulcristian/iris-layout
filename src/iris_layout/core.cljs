@@ -27,7 +27,9 @@
   (:require [reagent.core :as r]
             [iris-layout.layout :as layout]
             [iris-layout.components.entity-tile-group :as entity-tile-group]
-            [iris-layout.components.entity-card-group :as entity-card-group]))
+            [iris-layout.components.entity-card-group :as entity-card-group]
+            [iris-layout.components.entity-tile :as entity-tile]
+            [iris-layout.components.touch-drag :as touch-drag]))
 
 ;; ============================================================
 ;; JS <-> CLJS boundary conversion
@@ -122,24 +124,20 @@
   (let [props-ref (atom nil)
         handle-split (fn [tile-id entity-id split-direction source-type half]
                        (let [{:keys [layout on-layout-change]} @props-ref
-                             target-tile (layout/find-tile layout tile-id)
-                             same-tile? (and target-tile
-                                             (= (:entity-id target-tile) entity-id))
-                             before? (or (= half :left) (= half :top))]
-                         (when-not same-tile?
-                           (let [base-layout (if (= source-type :tile)
-                                               (or (layout/remove-entity-from-layout layout entity-id)
-                                                   layout)
+                             before? (or (= half :left) (= half :top))
+                             base-layout (if (= source-type :tile)
+                                           (or (layout/remove-entity-from-layout layout entity-id)
                                                layout)
-                                 target-after (layout/find-tile base-layout tile-id)
-                                 new-tile-id (generate-id)
-                                 split-id (generate-id)
-                                 new-layout (when target-after
-                                              (layout/split-tile
-                                                base-layout tile-id split-direction
-                                                entity-id new-tile-id split-id before?))]
-                             (when (and new-layout on-layout-change)
-                               (on-layout-change new-layout))))))
+                                           layout)
+                             target-after (layout/find-tile base-layout tile-id)
+                             new-tile-id (generate-id)
+                             split-id (generate-id)
+                             new-layout (when target-after
+                                          (layout/split-tile
+                                            base-layout tile-id split-direction
+                                            entity-id new-tile-id split-id before?))]
+                         (when (and new-layout on-layout-change)
+                           (on-layout-change new-layout))))
         handle-close (fn [entity-id]
                        (let [{:keys [layout on-layout-change on-entity-close]} @props-ref
                              new-layout (layout/remove-entity-from-layout layout entity-id)]
@@ -304,12 +302,56 @@
           (on-active-position-change new-pos))))))
 
 (defn- nav-edge-hiccup
-  "Return hiccup for a navigation edge button."
-  [css-class arrow visible? on-click]
+  "Return hiccup for a navigation edge button.
+   During drag, hovering navigates to adjacent workspace (user keeps dragging to drop there)."
+  [css-class arrow visible? on-click direction props-ref nav-drag-edge]
   [:div {:class (str "iris-nav-edge " css-class
-                     (when-not visible? " iris-nav-hidden"))
-         :on-click on-click}
+                     (when-not visible? " iris-nav-hidden")
+                     (when (= @nav-drag-edge direction) " iris-nav-drag-over"))
+         :on-click on-click
+         :on-drag-over (fn [e] (.preventDefault e))
+         :on-drag-enter (fn [e]
+                          (.preventDefault e)
+                          (reset! nav-drag-edge direction)
+                          ;; Navigate to adjacent workspace while dragging
+                          (handle-grid-nav direction props-ref))
+         :on-drag-leave (fn [e]
+                          (when-not (.contains (.-currentTarget e) (.-relatedTarget e))
+                            (reset! nav-drag-edge nil)))
+         :on-drop (fn [e]
+                    (.preventDefault e)
+                    (.stopPropagation e)
+                    (reset! nav-drag-edge nil))}
    [:span.iris-nav-arrow arrow]])
+
+(defn- update-workspaces-with-cleanup
+  "Update a workspace's layout and remove dragged entity from all other workspaces."
+  [workspaces target-key new-layout]
+  (let [dragged-entity @entity-tile/drag-source-entity]
+    (if dragged-entity
+      (reduce-kv
+        (fn [acc ws-key ws-data]
+          (if (= ws-key target-key)
+            (assoc acc ws-key {:layout new-layout})
+            (let [cleaned (layout/remove-entity-from-layout
+                            (:layout ws-data) dragged-entity)]
+              (assoc acc ws-key {:layout cleaned}))))
+        {} workspaces)
+      (assoc workspaces target-key {:layout new-layout}))))
+
+(defn- handle-empty-workspace-drop
+  "Handle drop on an empty workspace — create a tile for the dropped entity."
+  [e k workspaces on-workspaces-change]
+  (.preventDefault e)
+  (let [raw (.getData (.-dataTransfer e) "text/plain")]
+    (try
+      (let [data (js/JSON.parse raw)
+            entity-id (.-entityId data)]
+        (when entity-id
+          (let [new-layout {:type :tile :id (generate-id) :entity-id entity-id}
+                updated (update-workspaces-with-cleanup workspaces k new-layout)]
+            (on-workspaces-change updated))))
+      (catch :default _ nil))))
 
 (defn- grid-cell
   "Render a single grid cell (workspace or empty placeholder)."
@@ -334,10 +376,14 @@
          :on-layout-change
          (fn [new-layout]
            (when on-workspaces-change
-             (on-workspaces-change (assoc workspaces k {:layout new-layout}))))
+             (on-workspaces-change
+               (update-workspaces-with-cleanup workspaces k new-layout))))
          :on-entity-close on-entity-close}]
        [:div.iris-empty-workspace
-        [:div.iris-empty-workspace-label k]])]))
+        {:on-drag-over (fn [e] (.preventDefault e))
+         :on-drop (fn [e]
+                    (when on-workspaces-change
+                      (handle-empty-workspace-drop e k workspaces on-workspaces-change)))}])]))
 
 (defn- grid-canvas
   "Render the CSS grid canvas with all workspace cells."
@@ -383,6 +429,7 @@
   [_]
   (let [zoomed-out? (r/atom false)
         props-ref (atom nil)
+        nav-drag-edge (r/atom nil)
         handle-nav (fn [dir] (handle-grid-nav dir props-ref))
         keydown-handler (fn [e]
                           (when (and (= (.-key e) "Alt") (not (.-repeat e)))
@@ -396,22 +443,33 @@
                                         nil)]
                               (when dir
                                 (.preventDefault e)
+                                ;; Exit zoom-out first, then navigate (so slide is visible)
+                                (reset! zoomed-out? false)
                                 (handle-nav dir)))))
         keyup-handler (fn [e]
                         (when (= (.-key e) "Alt")
                           (reset! zoomed-out? false)))]
     (.addEventListener js/document "keydown" keydown-handler)
     (.addEventListener js/document "keyup" keyup-handler)
+    ;; Watch touch-drag nav-edge-target for highlight + navigation
+    (add-watch touch-drag/nav-edge-target ::grid-nav-highlight
+      (fn [_ _ old-dir new-dir]
+        (reset! nav-drag-edge new-dir)
+        ;; Navigate when touch enters a nav edge
+        (when (and new-dir (not= old-dir new-dir))
+          (handle-grid-nav new-dir props-ref))))
     (fn [{:keys [workspaces active-position] :as props}]
       (reset! props-ref props)
       (let [[cols rows] (grid-dimensions workspaces)
             zoomed? @zoomed-out?
-            vis? (fn [dir] (can-navigate? dir workspaces active-position))]
-        [:div.iris-grid-viewport
-         (nav-edge-hiccup "iris-nav-left" "\u2039" (vis? :left) #(handle-nav :left))
-         (nav-edge-hiccup "iris-nav-right" "\u203A" (vis? :right) #(handle-nav :right))
-         (nav-edge-hiccup "iris-nav-top" "\u2039" (vis? :up) #(handle-nav :up))
-         (nav-edge-hiccup "iris-nav-bottom" "\u203A" (vis? :down) #(handle-nav :down))
+            dragging? (or @entity-tile/drag-source-tile @touch-drag/touch-state)
+            vis? (fn [dir] (or dragging? (can-navigate? dir workspaces active-position)))]
+        [:div {:class (str "iris-grid-viewport"
+                          (when zoomed? " iris-grid-zoomed"))}
+         (nav-edge-hiccup "iris-nav-left" "\u2039" (vis? :left) #(handle-nav :left) :left props-ref nav-drag-edge)
+         (nav-edge-hiccup "iris-nav-right" "\u203A" (vis? :right) #(handle-nav :right) :right props-ref nav-drag-edge)
+         (nav-edge-hiccup "iris-nav-top" "\u2039" (vis? :up) #(handle-nav :up) :up props-ref nav-drag-edge)
+         (nav-edge-hiccup "iris-nav-bottom" "\u203A" (vis? :down) #(handle-nav :down) :down props-ref nav-drag-edge)
          [:div.iris-grid-center
           [:div.iris-grid-canvas
            {:style (camera-style cols rows active-position zoomed?)}
