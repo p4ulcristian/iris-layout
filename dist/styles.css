@@ -46,7 +46,7 @@
   height: 100%;
   min-height: 0;
   min-width: 0;
-  overflow: hidden;
+  overflow: visible;
 }
 
 /* Stacked layers — all stages rendered, only active is visible */
@@ -207,7 +207,7 @@
   display: flex;
   min-height: 0;
   min-width: 0;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .iris-grid-cell-active {
@@ -269,14 +269,14 @@
   position: relative;
   min-height: 0;
   min-width: 0;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .iris-entity-tile-group > div {
   transition: flex 200ms cubic-bezier(0.22, 1, 0.36, 1);
   min-height: 0;
   min-width: 0;
-  overflow: hidden;
+  overflow: visible;
   display: flex;
 }
 
@@ -296,13 +296,22 @@
 /* --- Entity tile --- */
 
 .iris-entity-tile {
+  --_color: var(--iris-tile-color, #6366f1);
   position: relative;
   border-radius: 12px;
   overflow: hidden;
-  backdrop-filter: blur(30px) saturate(180%);
-  background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05));
-  border: 1px solid rgba(255,255,255,0.15);
-  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  backdrop-filter: blur(15px) saturate(180%);
+  background:
+    linear-gradient(135deg,
+      color-mix(in srgb, var(--_color) 25%, transparent),
+      color-mix(in srgb, var(--_color) 10%, transparent)),
+    rgba(15, 20, 35, 0.55);
+  border: none;
+  box-shadow:
+    0 2px 8px rgba(0,0,0,0.25),
+    0 8px 24px rgba(0,0,0,0.2),
+    0 16px 48px rgba(0,0,0,0.15),
+    inset 0 1px 0 color-mix(in srgb, var(--_color) 15%, rgba(255,255,255,0.1));
   transition: transform 300ms cubic-bezier(0.22, 1, 0.36, 1),
               opacity 200ms ease,
               box-shadow 200ms ease;
@@ -313,13 +322,54 @@
   user-select: none;
 }
 
+/* Gradient border via mask-composite */
+.iris-entity-tile::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--_color) 60%, white) 0%,
+    color-mix(in srgb, var(--_color) 35%, transparent) 50%,
+    transparent 70%
+  );
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Noise texture overlay */
+.iris-entity-tile::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  opacity: 0.03;
+  mix-blend-mode: overlay;
+  pointer-events: none;
+  z-index: 2;
+}
+
 .iris-entity-tile:hover {
-  border-color: rgba(255,255,255,0.25);
 }
 
 .iris-entity-tile-focused {
-  box-shadow: 0 12px 40px rgba(99, 102, 241, 0.4);
-  border-color: rgba(99, 102, 241, 0.5);
+  box-shadow:
+    0 2px 8px rgba(0,0,0,0.25),
+    0 8px 24px rgba(0,0,0,0.2),
+    0 16px 48px rgba(0,0,0,0.15),
+    0 0 40px color-mix(in srgb, var(--_color) 55%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--_color) 20%, rgba(255,255,255,0.12));
   z-index: 10;
 }
 
@@ -330,12 +380,14 @@
 /* --- Entity tile header --- */
 
 .iris-entity-tile-header {
+  position: relative;
+  z-index: 3;
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 6px 10px;
-  background: rgba(255,255,255,0.04);
-  border-bottom: 1px solid rgba(255,255,255,0.06);
+  background: color-mix(in srgb, var(--_color) 20%, rgba(255,255,255,0.04));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
   cursor: grab;
   user-select: none;
   -webkit-user-select: none;
@@ -375,18 +427,86 @@
 }
 
 .iris-entity-tile-content {
+  position: relative;
+  z-index: 3;
   flex: 1;
   overflow: auto;
   min-height: 0;
   min-width: 0;
 }
 
-.iris-entity-tile-fullscreen {
-  position: absolute !important;
+.iris-fullscreen-overlay {
+  --_color: var(--iris-tile-color, #6366f1);
+  position: absolute;
   inset: 0;
   z-index: 50;
-  border-radius: 0;
-  flex: none !important;
+  display: flex;
+  flex-direction: column;
+  border-radius: 12px;
+  overflow: hidden;
+  backdrop-filter: blur(15px) saturate(180%);
+  background:
+    linear-gradient(135deg,
+      color-mix(in srgb, var(--_color) 25%, transparent),
+      color-mix(in srgb, var(--_color) 10%, transparent)),
+    rgba(15, 20, 35, 0.7);
+  border: none;
+  box-shadow:
+    0 2px 8px rgba(0,0,0,0.25),
+    0 8px 24px rgba(0,0,0,0.2),
+    0 16px 48px rgba(0,0,0,0.15),
+    0 0 40px color-mix(in srgb, var(--_color) 55%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--_color) 15%, rgba(255,255,255,0.1));
+}
+
+.iris-fullscreen-overlay::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--_color) 60%, white) 0%,
+    color-mix(in srgb, var(--_color) 35%, transparent) 50%,
+    transparent 70%
+  );
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.iris-fullscreen-overlay-header {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: color-mix(in srgb, var(--_color) 20%, rgba(255,255,255,0.04));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
+  cursor: pointer;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.iris-fullscreen-overlay-header .iris-entity-tile-header-close {
+  margin-left: auto;
+}
+
+.iris-fullscreen-overlay > .iris-entity-tile-content {
+  position: relative;
+  z-index: 3;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
 }
 
 .iris-entity-tile.iris-dragging {
@@ -394,8 +514,8 @@
 }
 
 .iris-drag-over {
-  border-color: rgba(99, 102, 241, 0.6);
-  box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
+  border-color: color-mix(in srgb, var(--_color) 60%, transparent);
+  box-shadow: 0 0 20px color-mix(in srgb, var(--_color) 30%, transparent);
 }
 
 /* Glow animation for tile interactions */
@@ -419,7 +539,7 @@
 
 .iris-drop-highlight {
   position: absolute;
-  background: rgba(99, 102, 241, 0.25);
+  background: color-mix(in srgb, var(--_color) 25%, transparent);
   transition: all 150ms ease;
 }
 
@@ -438,7 +558,7 @@
 
 .iris-drop-label {
   padding: 4px 12px;
-  background: rgba(99, 102, 241, 0.9);
+  background: color-mix(in srgb, var(--_color) 90%, black);
   color: #fff;
   font-size: 12px;
   font-weight: 500;

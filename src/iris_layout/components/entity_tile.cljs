@@ -137,9 +137,9 @@
                          (when focused? " iris-entity-tile-focused")
                          (when (not focused?) " iris-entity-tile-unfocused")
                          (when @drag-over " iris-drag-over")
-                         (when @dragging " iris-dragging")
-                         (when (= @fullscreen-tile (:id node)) " iris-entity-tile-fullscreen"))
-             :style {:flex 1}
+                         (when @dragging " iris-dragging"))
+             :style (cond-> {:flex 1}
+                            (:color entity) (assoc "--iris-tile-color" (:color entity)))
              :on-drag-over #(handle-drag-over % dragging drag-over closest-edge tile-ref)
              :on-drag-enter (fn [e] (.preventDefault e))
              :on-drag-leave (fn [e]

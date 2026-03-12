@@ -111,9 +111,27 @@
                            (on-layout-change new-layout))))]
     (fn [{:keys [layout entities render-entity-tile active-entity on-layout-change] :as props}]
       (reset! props-ref props)
-      [:div.iris-body-stage
-       [entity-tile-group/entity-tile-group
-        layout handle-split handle-close handle-ratio active-entity entities render-entity-tile]])))
+      (let [fs-id @entity-tile/fullscreen-tile
+            fs-node (when fs-id (layout/find-tile layout fs-id))
+            fs-entity (when fs-node (get entities (:entity-id fs-node)))]
+        [:div.iris-body-stage
+         [entity-tile-group/entity-tile-group
+          layout handle-split handle-close handle-ratio active-entity entities render-entity-tile]
+         (when fs-node
+           [:div.iris-fullscreen-overlay
+            {:style (when (:color fs-entity) {"--iris-tile-color" (:color fs-entity)})}
+            [:div.iris-fullscreen-overlay-header
+             {:on-double-click (fn [_] (reset! entity-tile/fullscreen-tile nil))}
+             [:span.iris-entity-tile-header-name
+              (or (:name fs-entity) (:entity-id fs-node))]
+             [:button.iris-entity-tile-header-close
+              {:on-click (fn [e]
+                           (.stopPropagation e)
+                           (reset! entity-tile/fullscreen-tile nil))}
+              "\u00d7"]]
+            [:div.iris-entity-tile-content
+             (when (and fs-entity render-entity-tile)
+               [:> render-entity-tile fs-entity])]])]))))
 
 
 ;; ============================================================
