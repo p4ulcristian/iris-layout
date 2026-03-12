@@ -1,33 +1,12 @@
 (ns iris-layout.core
-  "iris-layout — a tiling layout library for React.
+  "iris-layout — a 2D tiling workspace grid for React.
 
-   Exports two React components:
-   - `Sidebar` : Renders stage cards with draggable entity cards
-   - `Body`    : Renders the layout surface with resizable, rearrangeable entity tiles
+   Exports a single React component: `IrisLayout`
 
-   Both components accept the same props object:
-   ```js
-   {
-     stages:              [{id, label, layout}],   // Array of stage definitions
-     activeStage:         'stage-id',               // Currently active stage ID
-     activeEntity:        'entity-id',              // Currently focused entity ID
-     entities:            {id: {id, name, ...}},    // Entity data map
-     renderEntityCard:    ReactComponent,           // Compact card for sidebar
-     renderEntityTile:    ReactComponent,           // Full content for body tiles
-     onStagesChange:      fn(stages),               // Layout mutations callback
-     onActiveStageChange: fn(stageId),              // Stage switch callback
-     onActiveEntityChange: fn(entityId),            // Entity focus callback
-   }
-   ```
-
-   Layout tree structure (nested):
-   - Tile:  {type: 'tile',  id: str, entityId: str}
-   - Split: {type: 'split', id: str, direction: 'horizontal'|'vertical',
-             ratio: 0.0-1.0, children: [node, node]}"
+   See the `IrisLayout` def for full props documentation."
   (:require [reagent.core :as r]
             [iris-layout.layout :as layout]
             [iris-layout.components.entity-tile-group :as entity-tile-group]
-            [iris-layout.components.entity-card-group :as entity-card-group]
             [iris-layout.components.entity-tile :as entity-tile]
             [iris-layout.components.touch-drag :as touch-drag]))
 
@@ -81,29 +60,9 @@
                         v)]))
             obj))))
 
-(defn js->stages
-  "Convert a JS stages array to CLJS vector of stage maps."
-  [js-arr]
-  (when js-arr
-    (mapv (fn [s]
-            (let [obj (js->clj s)]
-              {:id    (get obj "id")
-               :label (get obj "label")
-               :layout (js->layout (get obj "layout"))}))
-          js-arr)))
-
-(defn stages->js
-  "Convert CLJS stages vector to JS array."
-  [stages]
-  (clj->js
-    (mapv (fn [s]
-            {"id"     (:id s)
-             "label"  (:label s)
-             "layout" (layout->js (:layout s))})
-          stages)))
 
 ;; ============================================================
-;; Body — layout surface with stage stack
+;; Body stage — single workspace layout renderer
 ;; ============================================================
 
 (defn- body-stage-component
@@ -156,86 +115,6 @@
        [entity-tile-group/entity-tile-group
         layout handle-split handle-close handle-ratio active-entity entities render-entity-tile]])))
 
-(defn- stage-index
-  "Find the index of a stage by ID."
-  [stages id]
-  (first (keep-indexed (fn [i s] (when (= (:id s) id) i)) stages)))
-
-(defn- restart-animation!
-  "Force restart a CSS animation on an element.
-   Uses offsetHeight read to force reflow before re-applying animation."
-  [^js el anim-name]
-  (when el
-    (set! (.-animation (.-style el)) "none")
-    (.-offsetHeight el)
-    (set! (.-animation (.-style el)) (str anim-name " 400ms cubic-bezier(0.22, 1, 0.36, 1) forwards"))))
-
-(defn body-component
-  "Body — the main layout area.
-
-   Renders all stages stacked on top of each other. The active stage
-   is visible and interactive; others are hidden but stay mounted.
-
-   Stage transitions use vertical slide animations:
-   - Moving to a higher-indexed stage slides from bottom
-   - Moving to a lower-indexed stage slides from top
-
-   Props (received as CLJS map after wrapper conversion):
-   :stages                  - vector of stage maps
-   :active-stage            - active stage ID
-   :active-entity           - focused entity ID
-   :entities                - entity data map
-   :render-entity-tile      - React component for tile content
-   :on-stages-change        - fn(stages) for layout mutations
-   :on-active-stage-change  - fn(stage-id) for stage switches
-   :on-active-entity-change - fn(entity-id) for entity focus"
-  [_]
-  (let [prev-stage-id (atom nil)
-        slide-dir (atom "right")
-        layer-refs (atom {})]
-    (fn [{:keys [stages active-stage active-entity entities render-entity-tile
-                 on-stages-change on-active-stage-change on-active-entity-change on-entity-close]}]
-      (let [prev-idx (stage-index stages @prev-stage-id)
-            curr-idx (stage-index stages active-stage)
-            changed? (and @prev-stage-id (not= @prev-stage-id active-stage))]
-        ;; Determine slide direction based on stage order
-        (when changed?
-          (reset! slide-dir (if (and prev-idx curr-idx (> curr-idx prev-idx))
-                              "down" "up")))
-        ;; Trigger slide animation after Reagent renders the DOM
-        (when changed?
-          (let [dir @slide-dir
-                target-id active-stage]
-            (r/after-render
-              (fn []
-                (when-let [el (get @layer-refs target-id)]
-                  (restart-animation! el (if (= dir "down")
-                                           "iris-slide-from-bottom"
-                                           "iris-slide-from-top")))))))
-        (reset! prev-stage-id active-stage)
-        [:div.iris-body
-         ;; All stages stacked — each is always rendered
-         [:div.iris-body-stack
-          (for [stage stages]
-            ^{:key (:id stage)}
-            [:div {:class (str "iris-body-layer"
-                               (when (= (:id stage) active-stage) " iris-body-layer-active"))
-                   :ref (fn [el] (when el (swap! layer-refs assoc (:id stage) el)))}
-             [body-stage-component
-              {:layout (:layout stage)
-               :entities entities
-               :render-entity-tile render-entity-tile
-               :active-entity active-entity
-               :on-layout-change
-               (fn [new-layout]
-                 (when on-stages-change
-                   (let [updated (mapv (fn [s]
-                                         (if (= (:id s) (:id stage))
-                                           (assoc s :layout new-layout)
-                                           s))
-                                       stages)]
-                     (on-stages-change updated))))
-               :on-entity-close on-entity-close}]])]]))))
 
 ;; ============================================================
 ;; Grid — 2D workspace grid with camera-based navigation
@@ -302,9 +181,9 @@
           (on-active-position-change new-pos))))))
 
 (defn- nav-edge-hiccup
-  "Return hiccup for a navigation edge button.
+  "Return hiccup for a navigation edge button with half-circle indicator.
    During drag, hovering navigates to adjacent workspace (user keeps dragging to drop there)."
-  [css-class arrow visible? on-click direction props-ref nav-drag-edge]
+  [css-class visible? on-click direction props-ref nav-drag-edge]
   [:div {:class (str "iris-nav-edge " css-class
                      (when-not visible? " iris-nav-hidden")
                      (when (= @nav-drag-edge direction) " iris-nav-drag-over"))
@@ -313,7 +192,6 @@
          :on-drag-enter (fn [e]
                           (.preventDefault e)
                           (reset! nav-drag-edge direction)
-                          ;; Navigate to adjacent workspace while dragging
                           (handle-grid-nav direction props-ref))
          :on-drag-leave (fn [e]
                           (when-not (.contains (.-currentTarget e) (.-relatedTarget e))
@@ -322,7 +200,7 @@
                     (.preventDefault e)
                     (.stopPropagation e)
                     (reset! nav-drag-edge nil))}
-   [:span.iris-nav-arrow arrow]])
+   [:div.iris-nav-semicircle]])
 
 (defn- update-workspaces-with-cleanup
   "Update a workspace's layout and remove dragged entity from all other workspaces."
@@ -396,7 +274,7 @@
           ^{:key k}
           [grid-cell k workspace (= k active-key) zoomed? props])))))
 
-(def ^:private grid-gap 32)
+(def ^:private grid-gap 16)
 
 (defn- camera-style
   "Compute the CSS transform style for the grid canvas camera.
@@ -466,10 +344,10 @@
             vis? (fn [dir] (or dragging? (can-navigate? dir workspaces active-position)))]
         [:div {:class (str "iris-grid-viewport"
                           (when zoomed? " iris-grid-zoomed"))}
-         (nav-edge-hiccup "iris-nav-left" "\u2039" (vis? :left) #(handle-nav :left) :left props-ref nav-drag-edge)
-         (nav-edge-hiccup "iris-nav-right" "\u203A" (vis? :right) #(handle-nav :right) :right props-ref nav-drag-edge)
-         (nav-edge-hiccup "iris-nav-top" "\u2039" (vis? :up) #(handle-nav :up) :up props-ref nav-drag-edge)
-         (nav-edge-hiccup "iris-nav-bottom" "\u203A" (vis? :down) #(handle-nav :down) :down props-ref nav-drag-edge)
+         (nav-edge-hiccup "iris-nav-left" (vis? :left) #(handle-nav :left) :left props-ref nav-drag-edge)
+         (nav-edge-hiccup "iris-nav-right" (vis? :right) #(handle-nav :right) :right props-ref nav-drag-edge)
+         (nav-edge-hiccup "iris-nav-top" (vis? :up) #(handle-nav :up) :up props-ref nav-drag-edge)
+         (nav-edge-hiccup "iris-nav-bottom" (vis? :down) #(handle-nav :down) :down props-ref nav-drag-edge)
          [:div.iris-grid-center
           [:div.iris-grid-canvas
            {:style (camera-style cols rows active-position zoomed?)}
@@ -518,183 +396,44 @@
     :on-entity-close onEntityClose}])
 
 ;; ============================================================
-;; Sidebar — stage cards with entity cards
+;; Exported React component
 ;; ============================================================
 
-(defn- remove-entity-from-stages
-  "Remove an entity from a specific stage. If the stage becomes empty, remove it.
-   Returns [updated-stages removed-stage-empty?]."
-  [stages source-stage-id entity-id]
-  (let [source-stage (first (filter #(= (:id %) source-stage-id) stages))
-        new-layout (when source-stage
-                     (layout/remove-entity-from-layout (:layout source-stage) entity-id))
-        empty? (nil? new-layout)]
-    [(if empty?
-       (vec (remove #(= (:id %) source-stage-id) stages))
-       (mapv (fn [s]
-               (if (= (:id s) source-stage-id)
-                 (assoc s :layout new-layout)
-                 s))
-             stages))
-     empty?]))
+(def IrisLayout
+  "A 2D tiling workspace grid for React.
 
-(defn sidebar-component
-  "Sidebar — renders a list of stage cards with drag-drop support.
+   Renders an infinite grid of workspaces navigated by arrow clicks or
+   Alt+Arrow keys. Each workspace contains a resizable, drag-and-drop
+   tile layout. Hold Alt to zoom out and see the full grid overview.
 
-   Features:
-   - Click a card to switch active stage
-   - Click an entity card to focus it
-   - Close button removes entity from stage (empty stage is removed)
-   - Drag entity cards between groups to move them
-   - Drag entity cards to empty sidebar area to create a new group
+   Props (camelCase JS object):
 
-   Props (received as CLJS map after wrapper conversion):
-   :stages                  - vector of stage maps
-   :active-stage            - active stage ID
-   :active-entity           - focused entity ID
-   :entities                - entity data map
-   :render-entity-card      - React component for entity card content
-   :on-stages-change        - fn(stages) for layout mutations
-   :on-active-stage-change  - fn(stage-id) for stage switches
-   :on-active-entity-change - fn(entity-id) for entity focus
-   :on-entity-close         - (optional) fn(stage-id, entity-id) side-effect hook called on close"
-  [_]
-  (let [drag-over (r/atom false)]
-    (fn [{:keys [stages active-stage active-entity entities render-entity-card
-                 on-stages-change on-active-stage-change on-active-entity-change
-                 on-entity-close]}]
-      [:div.iris-sidebar
-       {:class (when @drag-over "iris-sidebar-drag-over")
-        :on-drag-over (fn [e] (.preventDefault e) (reset! drag-over true))
-        :on-drag-enter (fn [e] (.preventDefault e))
-        :on-drag-leave (fn [e]
-                         (when (not (.contains (.-currentTarget e) (.-relatedTarget e)))
-                           (reset! drag-over false)))
-        :on-drop
-        (fn [e]
-          (.preventDefault e)
-          (reset! drag-over false)
-          ;; Only handle if not caught by a group (stopPropagation)
-          (let [raw (.getData (.-dataTransfer e) "text/plain")]
-            (try
-              (let [data (js/JSON.parse raw)]
-                (when (and (= (.-source data) "sidebar")
-                           (.-entityId data)
-                           (.-stageId data)
-                           on-stages-change)
-                  (let [entity-id (.-entityId data)
-                        source-stage-id (.-stageId data)
-                        [updated _] (remove-entity-from-stages stages source-stage-id entity-id)
-                        new-stage-id (generate-id)
-                        new-stage {:id new-stage-id
-                                   :label (or (:name (get entities entity-id)) "New Stage")
-                                   :layout {:type :tile
-                                            :id (generate-id)
-                                            :entity-id entity-id}}]
-                    (on-stages-change (conj updated new-stage))
-                    (when on-active-stage-change
-                      (on-active-stage-change new-stage-id)))))
-              (catch :default _ nil))))}
-       (for [stage stages]
-         ^{:key (:id stage)}
-         [entity-card-group/entity-card-group-component
-          {:stage stage
-           :active? (= (:id stage) active-stage)
-           :entities entities
-           :active-entity active-entity
-           :render-entity-card render-entity-card
-           :on-click #(when on-active-stage-change
-                        (on-active-stage-change (:id stage)))
-           :on-entity-click #(when on-active-entity-change
-                               (on-active-entity-change %))
-           :on-entity-close
-           (fn [entity-id]
-             (when on-stages-change
-               (let [[updated empty?] (remove-entity-from-stages stages (:id stage) entity-id)]
-                 (on-stages-change updated)
-                 (when (and empty?
-                            (= active-stage (:id stage))
-                            on-active-stage-change
-                            (seq updated))
-                   (on-active-stage-change (:id (first updated))))))
-             (when on-entity-close
-               (on-entity-close (:id stage) entity-id)))
-           :on-entity-drop
-           (fn [entity-id source-stage-id]
-             ;; Move entity from source stage to this stage
-             (when on-stages-change
-               (let [[updated source-empty?] (remove-entity-from-stages stages source-stage-id entity-id)
-                     ;; Add entity to target stage's layout
-                     updated (mapv (fn [s]
-                                     (if (= (:id s) (:id stage))
-                                       (assoc s :layout
-                                              (layout/append-entity
-                                                (:layout s) entity-id
-                                                (generate-id) (generate-id)))
-                                       s))
-                                   updated)]
-                 (on-stages-change updated)
-                 ;; If source was active and got removed, switch to target
-                 (when (and source-empty?
-                            (= active-stage source-stage-id)
-                            on-active-stage-change)
-                   (on-active-stage-change (:id stage))))))}])])))
+     workspaces              - Object keyed by 'x,y' position strings.
+                               Each value: { layout: LayoutNode }
+                               LayoutNode is either:
+                                 { type: 'tile',  id, entityId }
+                                 { type: 'split', id, direction: 'horizontal'|'vertical',
+                                   ratio: 0-1, children: [LayoutNode, LayoutNode] }
 
-;; ============================================================
-;; React-facing wrappers (JS consumers)
-;; ============================================================
-;; reactify-component auto-converts JS props to CLJS map with keyword keys.
-;; Nested objects (layout, entities, stages) remain as JS and need manual conversion.
+     activePosition          - [x, y] array — which workspace is visible.
 
-(defn- body-wrapper
-  "Wrapper that converts JS props to CLJS for body-component."
-  [{:keys [stages activeStage activeEntity entities renderEntityTile
-           onStagesChange onActiveStageChange onActiveEntityChange onEntityClose]}]
-  [body-component
-   {:stages (js->stages stages)
-    :active-stage activeStage
-    :active-entity activeEntity
-    :entities (js->entities entities)
-    :render-entity-tile renderEntityTile
-    :on-stages-change (when onStagesChange
-                        (fn [new-stages]
-                          (onStagesChange (stages->js new-stages))))
-    :on-active-stage-change onActiveStageChange
-    :on-active-entity-change onActiveEntityChange
-    :on-entity-close onEntityClose}])
+     activeEntity            - Entity ID string of the focused tile (or null).
 
-(defn- sidebar-wrapper
-  "Wrapper that converts JS props to CLJS for sidebar-component."
-  [{:keys [stages activeStage activeEntity entities renderEntityCard
-           onStagesChange onActiveStageChange onActiveEntityChange onEntityClose]}]
-  [sidebar-component
-   {:stages (js->stages stages)
-    :active-stage activeStage
-    :active-entity activeEntity
-    :entities (js->entities entities)
-    :render-entity-card renderEntityCard
-    :on-stages-change (when onStagesChange
-                        (fn [new-stages]
-                          (onStagesChange (stages->js new-stages))))
-    :on-active-stage-change onActiveStageChange
-    :on-active-entity-change onActiveEntityChange
-    :on-entity-close onEntityClose}])
+     entities                - Object keyed by entity ID.
+                               Each value: { id, name, ... } (your domain data).
 
-;; ============================================================
-;; Exported React components
-;; ============================================================
+     renderEntityTile        - React component rendered inside each tile.
+                               Receives the entity object as props.
 
-(def Sidebar
-  "React component — stage list with draggable entity cards.
-   See namespace docstring for full props specification."
-  (r/reactify-component sidebar-wrapper))
+     onWorkspacesChange      - fn(workspaces) — called on layout mutations
+                               (splits, closes, resizes, cross-workspace drags).
 
-(def Body
-  "React component — layout surface with resizable, rearrangeable entity tiles.
-   See namespace docstring for full props specification."
-  (r/reactify-component body-wrapper))
+     onActivePositionChange  - fn([x, y]) — called when navigating between workspaces.
 
-(def Grid
-  "React component — 2D workspace grid with Alt+Arrow navigation.
-   Workspaces are addressed by [x,y] coordinates in an infinite grid."
+     onActiveEntityChange    - fn(entityId) — called when a tile gains focus.
+
+     onEntityClose           - fn(entityId) — optional hook when a tile is closed.
+
+   CSS: import '@p4ulcristian/iris-layout/styles.css'
+   Customize gap: set --iris-grid-gap on a parent element."
   (r/reactify-component grid-wrapper))

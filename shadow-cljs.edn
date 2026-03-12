@@ -13,7 +13,5 @@
   :lib
   {:target :esm
    :output-dir "dist"
-   :modules {:iris-layout {:exports {Sidebar iris-layout.core/Sidebar
-                                     Body iris-layout.core/Body
-                                     Grid iris-layout.core/Grid}}}
+   :modules {:iris-layout {:exports {IrisLayout iris-layout.core/IrisLayout}}}
    :js-options {:js-provider :import}}}}
