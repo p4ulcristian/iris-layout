@@ -102,12 +102,13 @@
 ;; --- Main component ---
 
 (defn entity-tile-component
-  [node on-split on-close focused? entities render-entity-tile _parent-ctx]
+  [node on-split on-close focused? entities render-entity-tile _parent-ctx on-active-entity-change]
   (let [drag-over (r/atom false)
         closest-edge (r/atom nil)
         dragging (r/atom false)
         split-ref (atom on-split)
         close-ref (atom on-close)
+        active-entity-change-ref (atom on-active-entity-change)
         tile-ref (atom nil)
         touch-watch-key (str "tile-" (:id node))
         _ (add-watch touch-drag/hover-target touch-watch-key
@@ -125,9 +126,10 @@
        (fn [_] (remove-watch touch-drag/hover-target touch-watch-key))
 
        :reagent-render
-       (fn [node on-split on-close focused? entities render-entity-tile _parent-ctx]
+       (fn [node on-split on-close focused? entities render-entity-tile _parent-ctx on-active-entity-change]
          (reset! split-ref on-split)
          (reset! close-ref on-close)
+         (reset! active-entity-change-ref on-active-entity-change)
          (let [entity (get entities (:entity-id node))
                entity-name (or (:name entity) (:entity-id node))]
            [:div
@@ -140,6 +142,9 @@
                          (when @dragging " iris-dragging"))
              :style (cond-> {:flex 1}
                             (:color entity) (assoc "--iris-tile-color" (:color entity)))
+             :on-mouse-enter (fn [_]
+                                (when (and (not focused?) @active-entity-change-ref)
+                                  (@active-entity-change-ref (:entity-id node))))
              :on-drag-over #(handle-drag-over % dragging drag-over closest-edge tile-ref)
              :on-drag-enter (fn [e] (.preventDefault e))
              :on-drag-leave (fn [e]

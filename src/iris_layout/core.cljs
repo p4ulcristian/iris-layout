@@ -109,14 +109,14 @@
                              new-layout (layout/update-split-ratio layout split-id new-ratio)]
                          (when on-layout-change
                            (on-layout-change new-layout))))]
-    (fn [{:keys [layout entities render-entity-tile active-entity on-layout-change] :as props}]
+    (fn [{:keys [layout entities render-entity-tile active-entity on-layout-change on-active-entity-change] :as props}]
       (reset! props-ref props)
       (let [fs-id @entity-tile/fullscreen-tile
             fs-node (when fs-id (layout/find-tile layout fs-id))
             fs-entity (when fs-node (get entities (:entity-id fs-node)))]
         [:div.iris-body-stage
          [entity-tile-group/entity-tile-group
-          layout handle-split handle-close handle-ratio active-entity entities render-entity-tile]
+          layout handle-split handle-close handle-ratio active-entity entities render-entity-tile on-active-entity-change]
          (when fs-node
            [:div.iris-fullscreen-overlay
             {:style (when (:color fs-entity) {"--iris-tile-color" (:color fs-entity)})}
@@ -254,11 +254,15 @@
   [k workspace active? zoomed? props]
   (let [{:keys [entities render-entity-tile active-entity
                 on-workspaces-change on-active-position-change on-entity-close
-                workspaces]} props
+                on-active-entity-change workspaces]} props
         [x y] (mapv js/parseInt (.split k ","))]
     [:div {:class (str "iris-grid-cell"
                        (when active? " iris-grid-cell-active"))
            :data-position k
+           :on-mouse-enter (when (and zoomed? (not active?))
+                             (fn [_]
+                               (when on-active-position-change
+                                 (on-active-position-change [x y]))))
            :on-click (when (and zoomed? (not active?))
                        (fn [_]
                          (when on-active-position-change
@@ -269,6 +273,7 @@
          :entities entities
          :render-entity-tile render-entity-tile
          :active-entity (when active? active-entity)
+         :on-active-entity-change on-active-entity-change
          :on-layout-change
          (fn [new-layout]
            (when on-workspaces-change

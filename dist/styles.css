@@ -361,6 +361,12 @@
 }
 
 .iris-entity-tile:hover {
+  box-shadow:
+    0 2px 8px rgba(0,0,0,0.25),
+    0 8px 24px rgba(0,0,0,0.2),
+    0 16px 48px rgba(0,0,0,0.15),
+    0 0 24px color-mix(in srgb, var(--_color) 35%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--_color) 18%, rgba(255,255,255,0.12));
 }
 
 .iris-entity-tile-focused {
