@@ -141,6 +141,49 @@
   font-weight: 300;
 }
 
+/* --- Grid viewport (camera-based navigation) --- */
+
+.iris-grid-viewport {
+  display: grid;
+  grid-template-columns: 32px 1fr 32px;
+  grid-template-rows: 32px 1fr 32px;
+  grid-template-areas:
+    ".    top    ."
+    "left center right"
+    ".    bottom .";
+  flex: 1;
+  overflow: hidden;
+  min-width: 0;
+  min-height: 0;
+}
+
+.iris-grid-center {
+  grid-area: center;
+  position: relative;
+  overflow: hidden;
+  min-height: 0;
+  min-width: 0;
+}
+
+.iris-grid-canvas {
+  position: absolute;
+  display: grid;
+  gap: 32px;
+  transition: transform 400ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.iris-grid-cell {
+  display: flex;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.04);
+}
+
+.iris-grid-cell-active {
+  border-color: rgba(99, 102, 241, 0.3);
+}
+
 /* Slide animations — directional based on navigation */
 @keyframes iris-slide-from-bottom {
   from { transform: translateY(80px); }

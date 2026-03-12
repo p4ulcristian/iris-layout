@@ -240,7 +240,7 @@
                :on-entity-close on-entity-close}]])]]))))
 
 ;; ============================================================
-;; Grid — 2D workspace grid with directional navigation
+;; Grid — 2D workspace grid with camera-based navigation
 ;; ============================================================
 
 (defn- pos-key
@@ -257,161 +257,165 @@
     :up    [0 -1]
     :down  [0 1]))
 
-(defn- direction->enter-animation
-  "CSS animation for the incoming workspace."
-  [dir]
-  (case dir
-    :left  "iris-slide-from-left"
-    :right "iris-slide-from-right"
-    :up    "iris-slide-from-top"
-    :down  "iris-slide-from-bottom"))
+(defn- grid-dimensions
+  "Compute grid bounds from workspace keys. Returns [cols rows]."
+  [workspaces]
+  (if (empty? workspaces)
+    [1 1]
+    (let [positions (map (fn [k]
+                           (let [parts (.split k ",")]
+                             [(js/parseInt (aget parts 0))
+                              (js/parseInt (aget parts 1))]))
+                         (keys workspaces))
+          max-x (apply max (map first positions))
+          max-y (apply max (map second positions))]
+      [(inc max-x) (inc max-y)])))
 
-(defn- direction->exit-animation
-  "CSS animation for the outgoing workspace."
-  [dir]
-  (case dir
-    :left  "iris-slide-out-right"
-    :right "iris-slide-out-left"
-    :up    "iris-slide-out-bottom"
-    :down  "iris-slide-out-top"))
+(defn- can-navigate?
+  "Check if navigation in a direction is allowed."
+  [dir workspaces active-position]
+  (let [[dx dy] (direction->delta dir)
+        [x y] active-position
+        new-x (+ x dx)
+        new-y (+ y dy)
+        new-key (pos-key [new-x new-y])
+        active-key (pos-key active-position)
+        current-empty? (nil? (:layout (get workspaces active-key)))
+        target-exists? (contains? workspaces new-key)
+        target-has-layout? (and target-exists?
+                                (:layout (get workspaces new-key)))]
+    (and (>= new-x 0) (>= new-y 0)
+         (not (and current-empty? (not target-has-layout?))))))
+
+(defn- handle-grid-nav
+  "Handle navigation in a direction. Creates empty workspace if needed."
+  [dir props-ref]
+  (let [{:keys [workspaces active-position
+                on-workspaces-change on-active-position-change]} @props-ref]
+    (when (can-navigate? dir workspaces active-position)
+      (let [[dx dy] (direction->delta dir)
+            [x y] active-position
+            new-pos [(+ x dx) (+ y dy)]
+            new-key (pos-key new-pos)
+            target-exists? (contains? workspaces new-key)]
+        (when (and (not target-exists?) on-workspaces-change)
+          (on-workspaces-change (assoc workspaces new-key {:layout nil})))
+        (when on-active-position-change
+          (on-active-position-change new-pos))))))
+
+(defn- nav-edge-hiccup
+  "Return hiccup for a navigation edge button."
+  [css-class arrow visible? on-click]
+  [:div {:class (str "iris-nav-edge " css-class
+                     (when-not visible? " iris-nav-hidden"))
+         :on-click on-click}
+   [:span.iris-nav-arrow arrow]])
+
+(defn- grid-cell
+  "Render a single grid cell (workspace or empty placeholder)."
+  [k workspace active? zoomed? props]
+  (let [{:keys [entities render-entity-tile active-entity
+                on-workspaces-change on-active-position-change on-entity-close
+                workspaces]} props
+        [x y] (mapv js/parseInt (.split k ","))]
+    [:div {:class (str "iris-grid-cell"
+                       (when active? " iris-grid-cell-active"))
+           :data-position k
+           :on-click (when (and zoomed? (not active?))
+                       (fn [_]
+                         (when on-active-position-change
+                           (on-active-position-change [x y]))))}
+     (if (:layout workspace)
+       [body-stage-component
+        {:layout (:layout workspace)
+         :entities entities
+         :render-entity-tile render-entity-tile
+         :active-entity (when active? active-entity)
+         :on-layout-change
+         (fn [new-layout]
+           (when on-workspaces-change
+             (on-workspaces-change (assoc workspaces k {:layout new-layout}))))
+         :on-entity-close on-entity-close}]
+       [:div.iris-empty-workspace
+        [:div.iris-empty-workspace-label k]])]))
+
+(defn- grid-canvas
+  "Render the CSS grid canvas with all workspace cells."
+  [cols rows workspaces active-position zoomed? props]
+  (let [active-key (pos-key active-position)]
+    (for [y (range rows)]
+      (for [x (range cols)]
+        (let [k (pos-key [x y])
+              workspace (get workspaces k)]
+          ^{:key k}
+          [grid-cell k workspace (= k active-key) zoomed? props])))))
+
+(def ^:private grid-gap 32)
+
+(defn- camera-style
+  "Compute the CSS transform style for the grid canvas camera.
+   Uses calc() to account for the gap between grid cells."
+  [cols rows active-position zoomed?]
+  (let [[ax ay] active-position
+        scale (if zoomed? (/ 1 (max cols rows)) 1)
+        ;; Each cell is (100% - (n-1)*gap) / n wide, plus gap between cells.
+        ;; Offset for position p = p * (100% / n)  but we also shift by p * gap / n
+        ;; to center each cell. Simplest: calc(-ax * (100% + gap) / cols)
+        tx (if zoomed?
+             "0px"
+             (str "calc(" ax " * ((-100% - " grid-gap "px) / " cols "))"))
+        ty (if zoomed?
+             "0px"
+             (str "calc(" ay " * ((-100% - " grid-gap "px) / " rows "))"))]
+    {:width  (str "calc(" cols " * 100% + " (* (dec cols) grid-gap) "px)")
+     :height (str "calc(" rows " * 100% + " (* (dec rows) grid-gap) "px)")
+     :grid-template-columns (str "repeat(" cols ", 1fr)")
+     :grid-template-rows    (str "repeat(" rows ", 1fr)")
+     :transform (str "translate(" tx ", " ty ") scale(" scale ")")
+     :transform-origin "0 0"}))
 
 (defn grid-component
-  "Grid — a 2D grid of workspaces with directional navigation.
+  "Grid — a 2D grid of workspaces with camera-based navigation.
 
-   Workspaces are addressed by [x y] coordinates. Navigation via Alt+Arrow
-   keys moves to adjacent coordinates, creating empty workspaces as needed.
-
-   Props:
-   :workspaces              - map of 'x,y' string keys to workspace maps {:layout ...}
-   :active-position         - [x y] vector of current position
-   :active-entity           - focused entity ID
-   :entities                - entity data map
-   :render-entity-tile      - React component for tile content
-   :on-workspaces-change    - fn(workspaces) for workspace mutations
-   :on-active-position-change - fn([x y]) for navigation
-   :on-active-entity-change - fn(entity-id) for entity focus
-   :on-entity-close         - fn(entity-id) side-effect hook"
+   Workspaces are laid out in a real CSS grid. Navigation moves a camera
+   (CSS translate) to show the active workspace. Holding Alt zooms out
+   to show all workspaces at once."
   [_]
-  (let [prev-pos (atom nil)
-        nav-dir (atom nil)
-        exiting-key (r/atom nil)
-        layer-refs (atom {})
+  (let [zoomed-out? (r/atom false)
         props-ref (atom nil)
-        can-navigate? (fn [dir workspaces active-position]
-                        (let [[dx dy] (direction->delta dir)
-                              [x y] active-position
-                              new-x (+ x dx)
-                              new-y (+ y dy)
-                              new-key (pos-key [new-x new-y])
-                              active-key (pos-key active-position)
-                              current-empty? (nil? (:layout (get workspaces active-key)))
-                              target-exists? (contains? workspaces new-key)
-                              target-has-layout? (and target-exists?
-                                                      (:layout (get workspaces new-key)))]
-                          (and
-                            ;; Can't go to negative coordinates
-                            (>= new-x 0) (>= new-y 0)
-                            ;; Can't go from empty to empty
-                            (not (and current-empty? (not target-has-layout?))))))
-        handle-nav (fn [dir]
-                     (let [{:keys [workspaces active-position
-                                   on-workspaces-change on-active-position-change]} @props-ref]
-                       (when (can-navigate? dir workspaces active-position)
-                         (let [[dx dy] (direction->delta dir)
-                               [x y] active-position
-                               new-pos [(+ x dx) (+ y dy)]
-                               new-key (pos-key new-pos)
-                               target-exists? (contains? workspaces new-key)]
-                           ;; Create workspace at new position if it doesn't exist
-                           (when (and (not target-exists?) on-workspaces-change)
-                             (on-workspaces-change
-                               (assoc workspaces new-key {:layout nil})))
-                           (reset! nav-dir dir)
-                           (when on-active-position-change
-                             (on-active-position-change new-pos))))))
-        handler (fn [e]
-                  (when (.-altKey e)
-                    (let [dir (case (.-key e)
-                                "ArrowLeft"  :left
-                                "ArrowRight" :right
-                                "ArrowUp"    :up
-                                "ArrowDown"  :down
-                                nil)]
-                      (when dir
-                        (.preventDefault e)
-                        (handle-nav dir)))))]
-    (.addEventListener js/document "keydown" handler)
-    (fn [{:keys [workspaces active-position active-entity entities render-entity-tile
-                 on-workspaces-change on-active-position-change on-active-entity-change
-                 on-entity-close] :as props}]
+        handle-nav (fn [dir] (handle-grid-nav dir props-ref))
+        keydown-handler (fn [e]
+                          (when (and (= (.-key e) "Alt") (not (.-repeat e)))
+                            (reset! zoomed-out? true))
+                          (when (.-altKey e)
+                            (let [dir (case (.-key e)
+                                        "ArrowLeft"  :left
+                                        "ArrowRight" :right
+                                        "ArrowUp"    :up
+                                        "ArrowDown"  :down
+                                        nil)]
+                              (when dir
+                                (.preventDefault e)
+                                (handle-nav dir)))))
+        keyup-handler (fn [e]
+                        (when (= (.-key e) "Alt")
+                          (reset! zoomed-out? false)))]
+    (.addEventListener js/document "keydown" keydown-handler)
+    (.addEventListener js/document "keyup" keyup-handler)
+    (fn [{:keys [workspaces active-position] :as props}]
       (reset! props-ref props)
-      (let [active-key (pos-key active-position)
-            prev-key (when @prev-pos (pos-key @prev-pos))
-            changed? (and @prev-pos (not= @prev-pos active-position))]
-        ;; Trigger slide animations on both incoming and outgoing
-        (when changed?
-          (let [dir @nav-dir
-                target-key active-key
-                source-key prev-key]
-            (reset! exiting-key source-key)
-            (r/after-render
-              (fn []
-                ;; Animate incoming workspace
-                (when-let [el (get @layer-refs target-key)]
-                  (when dir
-                    (restart-animation! el (direction->enter-animation dir))))
-                ;; Animate outgoing workspace
-                (when-let [el (get @layer-refs source-key)]
-                  (when dir
-                    (restart-animation! el (direction->exit-animation dir))
-                    ;; Remove exiting class after animation ends
-                    (.addEventListener el "animationend"
-                      (fn cleanup [_]
-                        (.removeEventListener el "animationend" cleanup)
-                        (reset! exiting-key nil))
-                      #js {:once true})))))))
-        (reset! prev-pos active-position)
-        (let [nav-visible? (fn [dir] (can-navigate? dir workspaces active-position))]
-        [:div.iris-body
-         ;; Navigation edge buttons
-         [:div {:class (str "iris-nav-edge iris-nav-left"
-                            (when-not (nav-visible? :left) " iris-nav-hidden"))
-                :on-click #(handle-nav :left)}
-          [:span.iris-nav-arrow "\u2039"]]
-         [:div {:class (str "iris-nav-edge iris-nav-right"
-                            (when-not (nav-visible? :right) " iris-nav-hidden"))
-                :on-click #(handle-nav :right)}
-          [:span.iris-nav-arrow "\u203A"]]
-         [:div {:class (str "iris-nav-edge iris-nav-top"
-                            (when-not (nav-visible? :up) " iris-nav-hidden"))
-                :on-click #(handle-nav :up)}
-          [:span.iris-nav-arrow "\u2039"]]
-         [:div {:class (str "iris-nav-edge iris-nav-bottom"
-                            (when-not (nav-visible? :down) " iris-nav-hidden"))
-                :on-click #(handle-nav :down)}
-          [:span.iris-nav-arrow "\u203A"]]
-         [:div.iris-body-stack
-          (for [[k workspace] workspaces]
-            ^{:key k}
-            [:div {:class (str "iris-body-layer"
-                               (when (= k active-key) " iris-body-layer-active")
-                               (when (= k @exiting-key) " iris-body-layer-exiting"))
-                   :data-position k
-                   :ref (fn [el] (when el (swap! layer-refs assoc k el)))}
-             (if (:layout workspace)
-               [body-stage-component
-                {:layout (:layout workspace)
-                 :entities entities
-                 :render-entity-tile render-entity-tile
-                 :active-entity active-entity
-                 :on-layout-change
-                 (fn [new-layout]
-                   (when on-workspaces-change
-                     (on-workspaces-change
-                       (assoc workspaces k {:layout new-layout}))))
-                 :on-entity-close on-entity-close}]
-               [:div.iris-empty-workspace
-                [:div.iris-empty-workspace-label k]])])]])))))
+      (let [[cols rows] (grid-dimensions workspaces)
+            zoomed? @zoomed-out?
+            vis? (fn [dir] (can-navigate? dir workspaces active-position))]
+        [:div.iris-grid-viewport
+         (nav-edge-hiccup "iris-nav-left" "\u2039" (vis? :left) #(handle-nav :left))
+         (nav-edge-hiccup "iris-nav-right" "\u203A" (vis? :right) #(handle-nav :right))
+         (nav-edge-hiccup "iris-nav-top" "\u2039" (vis? :up) #(handle-nav :up))
+         (nav-edge-hiccup "iris-nav-bottom" "\u203A" (vis? :down) #(handle-nav :down))
+         [:div.iris-grid-center
+          [:div.iris-grid-canvas
+           {:style (camera-style cols rows active-position zoomed?)}
+           (grid-canvas cols rows workspaces active-position zoomed? props)]]]))))
 
 ;; ============================================================
 ;; JS <-> CLJS: Grid conversions

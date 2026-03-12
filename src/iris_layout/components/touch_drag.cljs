@@ -168,8 +168,16 @@
         ;; Cancel pending long-press on lift
         (cancel-pending!)
         ;; Safety cleanup for active drag (individual tiles handle the drop)
+        ;; Also remove any orphaned ghost elements
         (when (dragging?)
-          (js/setTimeout #(when (dragging?) (end-drag!)) 100)))
+          (js/setTimeout #(when (dragging?) (end-drag!)) 100))
+        ;; Belt-and-suspenders: remove any leftover ghost elements
+        (js/setTimeout
+          (fn []
+            (doseq [ghost (array-seq (.querySelectorAll js/document ".iris-touch-drag-ghost"))]
+              (when-not (dragging?)
+                (.remove ghost))))
+          300))
       #js {:passive true})
     ;; Prevent context menu during long-press / active drag
     (.addEventListener js/document "contextmenu"
@@ -180,6 +188,12 @@
     (.addEventListener js/document "touchcancel"
       (fn [_e]
         (cancel-pending!)
-        (when (dragging?) (end-drag!)))
+        (when (dragging?) (end-drag!))
+        ;; Remove any orphaned ghost elements
+        (js/setTimeout
+          (fn []
+            (doseq [ghost (array-seq (.querySelectorAll js/document ".iris-touch-drag-ghost"))]
+              (.remove ghost)))
+          100))
       #js {:passive true})
     true))

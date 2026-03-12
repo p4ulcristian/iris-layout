@@ -160,15 +160,16 @@
              :on-touch-end
              (fn [_e]
                (touch-drag/cancel-pending!)
-               (when (touch-drag/dragging?)
-                 (reset! dragging false)
+               (if (touch-drag/dragging?)
+                 (do (reset! dragging false)
                  (when-let [drop-info (touch-drag/end-drag!)]
                    (let [{:keys [target-tile-id half source-entity-id source-tile-id]} drop-info
                          direction (half->direction half)]
                      (when (and target-tile-id
                                 (not= source-tile-id target-tile-id)
                                 (not (noop-rearrange? source-tile-id half @ctx-ref)))
-                       (@split-ref target-tile-id source-entity-id direction :tile half))))))}
+                       (@split-ref target-tile-id source-entity-id direction :tile half))))))
+                 (reset! dragging false))}
 
             ;; Header — mouse drag handle + name + close
             [:div.iris-entity-tile-header

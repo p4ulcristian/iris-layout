@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Iris Layout</title>
-  <link rel="stylesheet" href="./dist/styles.css?v=27" />
+  <link rel="stylesheet" href="./dist/styles.css?v=28" />
   <script type="importmap">
   {
     "imports": {
@@ -18,7 +18,7 @@
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      height: 100vh;
+      height: 100dvh;
       background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 50%, #16213e 100%);
       color: #fff;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -27,7 +27,7 @@
     .app {
       display: flex;
       flex-direction: column;
-      height: 100vh;
+      height: 100dvh;
     }
 .main-area {
       flex: 1;
@@ -105,7 +105,7 @@
   <script type="module">
     import React, { useState, createElement as h } from 'react'
     import { createRoot } from 'react-dom/client'
-    import { Grid } from './dist/iris-layout.js?v=27'
+    import { Grid } from './dist/iris-layout.js?v=28'
 
     const ENTITIES = {
       editor: { id: 'editor', name: 'editor.cljs', type: 'code', color: '#6366f1' },
