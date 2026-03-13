@@ -73,15 +73,10 @@
             (@split-ref (:id node) raw direction :sidebar))))))
   (clear-drop-state! drag-over closest-edge))
 
-(defn- handle-touch-end [dragging split-ref]
-  (touch-drag/cancel-pending!)
+(defn- handle-touch-end [dragging]
+  (touch-drag/cancel-touch!)
   (when (touch-drag/dragging?)
-    (reset! dragging false)
-    (when-let [drop-info (touch-drag/end-drag!)]
-      (let [{:keys [target-tile-id half source-entity-id source-tile-id]} drop-info
-            direction (half->direction half)]
-        (when (and target-tile-id (not= source-tile-id target-tile-id))
-          (@split-ref target-tile-id source-entity-id direction :tile half)))))
+    (touch-drag/end-drag!))
   (reset! dragging false))
 
 (defn- handle-drag-start [e node dragging]
@@ -111,6 +106,7 @@
         active-entity-change-ref (atom on-active-entity-change)
         tile-ref (atom nil)
         touch-watch-key (str "tile-" (:id node))
+        drop-watch-key (str "tile-drop-" (:id node))
         _ (add-watch touch-drag/hover-target touch-watch-key
             (fn [_ _ _ new-target]
               (if (and new-target (= (:tile-id new-target) (:id node)))
@@ -120,10 +116,21 @@
                     (do (reset! closest-edge (:half new-target))
                         (reset! drag-over true))))
                 (when @drag-over
-                  (clear-drop-state! drag-over closest-edge)))))]
+                  (clear-drop-state! drag-over closest-edge)))))
+        _ (add-watch touch-drag/drop-result drop-watch-key
+            (fn [_ _ _ drop-info]
+              (when (and drop-info (= (:target-tile-id drop-info) (:id node)))
+                (let [{:keys [source-tile-id source-entity-id half]} drop-info
+                      direction (half->direction half)]
+                  (when (not= source-tile-id (:id node))
+                    (@split-ref (:id node) source-entity-id direction :tile half)))
+                (reset! touch-drag/drop-result nil)
+                (clear-drop-state! drag-over closest-edge))))]
     (r/create-class
       {:component-will-unmount
-       (fn [_] (remove-watch touch-drag/hover-target touch-watch-key))
+       (fn [_]
+         (remove-watch touch-drag/hover-target touch-watch-key)
+         (remove-watch touch-drag/drop-result drop-watch-key))
 
        :reagent-render
        (fn [node on-split on-close focused? entities render-entity-tile _parent-ctx on-active-entity-change]
@@ -151,11 +158,7 @@
                               (when-not (.contains (.-currentTarget e) (.-relatedTarget e))
                                 (clear-drop-state! drag-over closest-edge)))
              :on-drop #(handle-drop % node tile-ref split-ref drag-over closest-edge)
-             :on-touch-start (fn [_e]
-                               (touch-drag/start-pending!
-                                 (:id node) (:entity-id node) _e
-                                 (fn [] (reset! dragging true))))
-             :on-touch-end (fn [_e] (handle-touch-end dragging split-ref))}
+ }
 
             ;; Header
             [:div.iris-entity-tile-header
@@ -165,7 +168,11 @@
                                    (reset! fullscreen-tile nil)
                                    (reset! fullscreen-tile (:id node))))
               :on-drag-start #(handle-drag-start % node dragging)
-              :on-drag-end (fn [_] (handle-drag-end dragging))}
+              :on-drag-end (fn [_] (handle-drag-end dragging))
+              :on-touch-start (fn [e]
+                                (touch-drag/start-touch!
+                                  (:id node) (:entity-id node) e))
+              :on-touch-end (fn [_e] (handle-touch-end dragging))}
              [:span.iris-entity-tile-header-name entity-name]
              [:button.iris-entity-tile-header-close
               {:on-click (fn [e]

@@ -5,16 +5,13 @@
    provides a global touch-drag state that tiles subscribe to.
 
    Flow:
-   1. Header long-press (~400ms) → sets drag source info, creates ghost
-   2. Global touchmove → updates ghost position, finds tile under finger
+   1. Header touchstart → records start position and source info
+   2. Global touchmove → after small movement, activates drag with ghost
    3. Touchend → performs drop on target tile, cleans up"
   (:require [reagent.core :as r]))
 
-;; Long-press duration in ms
-(def long-press-ms 400)
-
-;; Tolerance in px — if finger moves more than this, cancel long-press
-(def move-tolerance 10)
+;; Movement threshold in px — drag activates after finger moves this far
+(def move-threshold 8)
 
 ;; Global touch drag state
 (defonce touch-state (r/atom nil))
@@ -27,15 +24,19 @@
 (defonce nav-edge-target (r/atom nil))
 ;; Shape: :left | :right | :up | :down | nil
 
-;; Long-press pending state (not reactive, internal only)
-(defonce ^:private pending (atom nil))
-;; Shape: {:timer-id int :start-x num :start-y num :tile-id str :entity-id str}
+;; Drop result — set when drag ends, watched by target tiles to execute the split
+(defonce drop-result (r/atom nil))
+;; Shape: {:source-tile-id str :source-entity-id str :target-tile-id str :half keyword} or nil
+
+;; Touch start state (not reactive, internal only)
+(defonce ^:private touch-start (atom nil))
+;; Shape: {:start-x num :start-y num :tile-id str :entity-id str}
 
 (defn dragging? []
   (some? @touch-state))
 
-(defn pending? []
-  (some? @pending))
+(defn touch-started? []
+  (some? @touch-start))
 
 (defn- create-ghost! [x y]
   (let [ghost (js/document.createElement "div")]
@@ -50,51 +51,37 @@
     (.appendChild js/document.body ghost)
     ghost))
 
-(defn start-pending!
-  "Begin long-press detection on a header touchstart."
-  [tile-id entity-id touch-event on-activate]
+(defn start-touch!
+  "Record touch start on a header. Drag activates after movement threshold."
+  [tile-id entity-id touch-event]
   (let [touch (aget (.-changedTouches touch-event) 0)
         x (.-clientX touch)
-        y (.-clientY touch)
-        timer (js/setTimeout
-                (fn []
-                  ;; Long-press triggered — activate drag
-                  (let [ghost (create-ghost! x y)]
-                    (reset! touch-state {:tile-id tile-id
-                                         :entity-id entity-id
-                                         :ghost-el ghost
-                                         :active? true})
-                    (reset! pending nil)
-                    ;; Clear any text selection
-                    (when-let [sel (js/window.getSelection)]
-                      (.removeAllRanges sel))
-                    ;; Vibrate for haptic feedback if available
-                    (when (.-vibrate js/navigator)
-                      (.vibrate js/navigator 30))
-                    (when on-activate (on-activate))))
-                long-press-ms)]
-    (reset! pending {:timer-id timer
-                     :start-x x
-                     :start-y y
-                     :tile-id tile-id
-                     :entity-id entity-id})))
+        y (.-clientY touch)]
+    (reset! touch-start {:start-x x
+                         :start-y y
+                         :tile-id tile-id
+                         :entity-id entity-id})))
 
-(defn cancel-pending!
-  "Cancel a pending long-press."
+(defn cancel-touch!
+  "Cancel a touch start without activating drag."
   []
-  (when-let [p @pending]
-    (js/clearTimeout (:timer-id p))
-    (reset! pending nil)))
+  (reset! touch-start nil))
 
-(defn check-move-cancel!
-  "Cancel long-press if finger moved too far."
-  [touch-event]
-  (when-let [p @pending]
-    (let [touch (aget (.-changedTouches touch-event) 0)
-          dx (- (.-clientX touch) (:start-x p))
-          dy (- (.-clientY touch) (:start-y p))]
-      (when (> (js/Math.sqrt (+ (* dx dx) (* dy dy))) move-tolerance)
-        (cancel-pending!)))))
+(defn- activate-drag!
+  "Activate drag — create ghost and set drag state."
+  [ts x y]
+  (let [ghost (create-ghost! x y)]
+    (reset! touch-state {:tile-id (:tile-id ts)
+                         :entity-id (:entity-id ts)
+                         :ghost-el ghost
+                         :active? true})
+    (reset! touch-start nil)
+    ;; Clear any text selection
+    (when-let [sel (js/window.getSelection)]
+      (.removeAllRanges sel))
+    ;; Vibrate for haptic feedback if available
+    (when (.-vibrate js/navigator)
+      (.vibrate js/navigator 30))))
 
 (defn- find-tile-element
   "Find the closest .iris-entity-tile ancestor from the element at point."
@@ -150,22 +137,22 @@
               (reset! hover-target nil))))))))
 
 (defn end-drag!
-  "End touch drag — return the drop target info and clean up."
+  "End touch drag — publish drop result for target tile or workspace to handle, then clean up."
   []
   (let [state @touch-state
         target @hover-target]
+    ;; Publish drop result — with or without a target tile
+    (when state
+      (reset! drop-result (cond-> {:source-tile-id (:tile-id state)
+                                   :source-entity-id (:entity-id state)}
+                            target (assoc :target-tile-id (:tile-id target)
+                                          :half (:half target)))))
     ;; Clean up ghost
     (when-let [ghost (:ghost-el state)]
       (.remove ghost))
     (reset! touch-state nil)
     (reset! hover-target nil)
-    (reset! nav-edge-target nil)
-    ;; Return drop info
-    (when (and state target)
-      {:source-tile-id (:tile-id state)
-       :source-entity-id (:entity-id state)
-       :target-tile-id (:tile-id target)
-       :half (:half target)})))
+    (reset! nav-edge-target nil)))
 
 ;; Global touch listeners (attached once)
 (defonce _touch-listeners
@@ -177,19 +164,27 @@
           (dragging?)
           (do (.preventDefault e)
               (move-drag! e))
-          ;; Pending long-press — check if moved too far
-          (pending?)
-          (check-move-cancel! e)))
+          ;; Touch started on header — check if moved enough to activate drag
+          (touch-started?)
+          (let [ts @touch-start
+                touch (aget (.-changedTouches e) 0)
+                x (.-clientX touch)
+                y (.-clientY touch)
+                dx (- x (:start-x ts))
+                dy (- y (:start-y ts))
+                dist (js/Math.sqrt (+ (* dx dx) (* dy dy)))]
+            (when (> dist move-threshold)
+              (.preventDefault e)
+              (activate-drag! ts x y)))))
       #js {:passive false})
     (.addEventListener js/document "touchend"
       (fn [_e]
-        ;; Cancel pending long-press on lift
-        (cancel-pending!)
+        ;; Cancel touch start on lift (was a tap, not drag)
+        (cancel-touch!)
         ;; Safety cleanup for active drag (individual tiles handle the drop)
-        ;; Also remove any orphaned ghost elements
         (when (dragging?)
           (js/setTimeout #(when (dragging?) (end-drag!)) 100))
-        ;; Belt-and-suspenders: remove any leftover ghost elements
+        ;; Remove any leftover ghost elements
         (js/setTimeout
           (fn []
             (doseq [ghost (array-seq (.querySelectorAll js/document ".iris-touch-drag-ghost"))]
@@ -197,15 +192,15 @@
                 (.remove ghost))))
           300))
       #js {:passive true})
-    ;; Prevent context menu during long-press / active drag
+    ;; Prevent context menu during drag
     (.addEventListener js/document "contextmenu"
       (fn [e]
-        (when (or (pending?) (dragging?))
+        (when (or (touch-started?) (dragging?))
           (.preventDefault e)))
       #js {:passive false})
     (.addEventListener js/document "touchcancel"
       (fn [_e]
-        (cancel-pending!)
+        (cancel-touch!)
         (when (dragging?) (end-drag!))
         ;; Remove any orphaned ghost elements
         (js/setTimeout

@@ -331,6 +331,7 @@
   (let [zoomed-out? (r/atom false)
         props-ref (atom nil)
         nav-drag-edge (r/atom nil)
+        touch-nav-happened? (atom false)
         handle-nav (fn [dir] (handle-grid-nav dir props-ref))
         keydown-handler (fn [e]
                           (when (and (= (.-key e) "Alt") (not (.-repeat e)))
@@ -358,7 +359,37 @@
         (reset! nav-drag-edge new-dir)
         ;; Navigate when touch enters a nav edge
         (when (and new-dir (not= old-dir new-dir))
+          (reset! touch-nav-happened? true)
           (handle-grid-nav new-dir props-ref))))
+    ;; Watch touch-drag drop-result for drops with no target tile after workspace nav
+    (add-watch touch-drag/drop-result ::grid-touch-drop
+      (fn [_ _ _ drop-info]
+        (when (and drop-info
+                   (not (:target-tile-id drop-info))
+                   @touch-nav-happened?)
+          (let [{:keys [source-entity-id]} drop-info
+                {:keys [workspaces active-position on-workspaces-change]} @props-ref
+                active-key (pos-key active-position)]
+            (when (and source-entity-id on-workspaces-change)
+              (let [new-tile {:type :tile :id (generate-id) :entity-id source-entity-id}
+                    existing-layout (:layout (get workspaces active-key))
+                    new-layout (if existing-layout
+                                 ;; Add alongside existing layout
+                                 {:type :split :id (generate-id)
+                                  :direction :horizontal :ratio 0.5
+                                  :children [existing-layout new-tile]}
+                                 new-tile)
+                    updated (reduce-kv
+                              (fn [acc ws-key ws-data]
+                                (if (= ws-key active-key)
+                                  (assoc acc ws-key {:layout new-layout})
+                                  (let [cleaned (layout/remove-entity-from-layout
+                                                  (:layout ws-data) source-entity-id)]
+                                    (assoc acc ws-key {:layout cleaned}))))
+                              {} workspaces)]
+                (on-workspaces-change updated))))
+          (reset! touch-drag/drop-result nil))
+        (reset! touch-nav-happened? false)))
     (fn [{:keys [workspaces active-position] :as props}]
       (reset! props-ref props)
       (let [[cols rows] (grid-dimensions workspaces)
