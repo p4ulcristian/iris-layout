@@ -1,6 +1,6 @@
 {
   "name": "@p4ulcristian/iris-layout",
-  "version": "0.2.6",
+  "version": "0.2.9",
   "description": "Tiling layout library for React — resizable splits, drag-drop rearrangement, multi-stage workspaces",
   "type": "module",
   "main": "dist/iris-layout.js",

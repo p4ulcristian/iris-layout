@@ -62,6 +62,43 @@
 
 
 ;; ============================================================
+;; Fullscreen overlay
+;; ============================================================
+
+(defn- fullscreen-overlay
+  [fs-node fs-entity render-entity-tile on-entity-color-change]
+  (let [color-picker-open? (r/atom false)
+        color-picker-rect (r/atom nil)]
+    (fn [fs-node fs-entity render-entity-tile on-entity-color-change]
+      (let [fs-color (or (:color fs-entity) "#6366f1")]
+        [:div.iris-fullscreen-overlay
+         {:style (when (:color fs-entity) {"--iris-tile-color" (:color fs-entity)})}
+         [:div.iris-fullscreen-overlay-header
+          {:on-double-click (fn [_] (reset! entity-tile/fullscreen-tile nil))}
+          [:div {:style {:flex-shrink 0}}
+           [:div.iris-entity-tile-header-dot
+            {:style {:background fs-color}
+             :on-click (fn [e]
+                         (.stopPropagation e)
+                         (let [rect (.getBoundingClientRect (.-currentTarget e))]
+                           (reset! color-picker-rect
+                                   {:top (.-top rect) :left (.-left rect)
+                                    :bottom (.-bottom rect) :width (.-width rect)}))
+                         (swap! color-picker-open? not))}]
+           (when @color-picker-open?
+             [entity-tile/color-picker-popover (:entity-id fs-node) on-entity-color-change color-picker-open? @color-picker-rect fs-color])]
+          [:span.iris-entity-tile-header-name
+           (or (:name fs-entity) (:entity-id fs-node))]
+          [:button.iris-entity-tile-header-close
+           {:on-click (fn [e]
+                        (.stopPropagation e)
+                        (reset! entity-tile/fullscreen-tile nil))}
+           "\u00d7"]]
+         [:div.iris-entity-tile-content
+          (when (and fs-entity render-entity-tile)
+            [:> render-entity-tile fs-entity])]]))))
+
+;; ============================================================
 ;; Body stage — single workspace layout renderer
 ;; ============================================================
 
@@ -78,7 +115,8 @@
    :render-entity-tile - React component for tile content
    :active-entity      - focused entity ID
    :on-layout-change   - fn(new-layout) for layout mutations
-   :on-active-entity-change - fn(entity-id) for focus changes"
+   :on-active-entity-change - fn(entity-id) for focus changes
+   :on-entity-color-change  - fn(entity-id, color) for tile color changes"
   [_]
   (let [props-ref (atom nil)
         handle-split (fn [tile-id entity-id split-direction source-type half]
@@ -109,29 +147,16 @@
                              new-layout (layout/update-split-ratio layout split-id new-ratio)]
                          (when on-layout-change
                            (on-layout-change new-layout))))]
-    (fn [{:keys [layout entities render-entity-tile active-entity on-layout-change on-active-entity-change] :as props}]
+    (fn [{:keys [layout entities render-entity-tile active-entity on-layout-change on-active-entity-change on-entity-color-change] :as props}]
       (reset! props-ref props)
       (let [fs-id @entity-tile/fullscreen-tile
             fs-node (when fs-id (layout/find-tile layout fs-id))
             fs-entity (when fs-node (get entities (:entity-id fs-node)))]
         [:div.iris-body-stage
          [entity-tile-group/entity-tile-group
-          layout handle-split handle-close handle-ratio active-entity entities render-entity-tile on-active-entity-change]
+          layout handle-split handle-close handle-ratio active-entity entities render-entity-tile on-active-entity-change on-entity-color-change]
          (when fs-node
-           [:div.iris-fullscreen-overlay
-            {:style (when (:color fs-entity) {"--iris-tile-color" (:color fs-entity)})}
-            [:div.iris-fullscreen-overlay-header
-             {:on-double-click (fn [_] (reset! entity-tile/fullscreen-tile nil))}
-             [:span.iris-entity-tile-header-name
-              (or (:name fs-entity) (:entity-id fs-node))]
-             [:button.iris-entity-tile-header-close
-              {:on-click (fn [e]
-                           (.stopPropagation e)
-                           (reset! entity-tile/fullscreen-tile nil))}
-              "\u00d7"]]
-            [:div.iris-entity-tile-content
-             (when (and fs-entity render-entity-tile)
-               [:> render-entity-tile fs-entity])]])]))))
+           [fullscreen-overlay fs-node fs-entity render-entity-tile on-entity-color-change])]))))
 
 
 ;; ============================================================
@@ -254,7 +279,7 @@
   [k workspace active? zoomed? props]
   (let [{:keys [entities render-entity-tile active-entity
                 on-workspaces-change on-active-position-change on-entity-close
-                on-active-entity-change workspaces]} props
+                on-active-entity-change on-entity-color-change workspaces]} props
         [x y] (mapv js/parseInt (.split k ","))]
     [:div {:class (str "iris-grid-cell"
                        (when active? " iris-grid-cell-active"))
@@ -274,6 +299,7 @@
          :render-entity-tile render-entity-tile
          :active-entity (when active? active-entity)
          :on-active-entity-change on-active-entity-change
+         :on-entity-color-change on-entity-color-change
          :on-layout-change
          (fn [new-layout]
            (when on-workspaces-change
@@ -433,7 +459,8 @@
 (defn- grid-wrapper
   "Wrapper that converts JS props to CLJS for grid-component."
   [{:keys [workspaces activePosition activeEntity entities renderEntityTile
-           onWorkspacesChange onActivePositionChange onActiveEntityChange onEntityClose]}]
+           onWorkspacesChange onActivePositionChange onActiveEntityChange onEntityClose
+           onEntityColorChange]}]
   [grid-component
    {:workspaces (js->workspaces workspaces)
     :active-position (js->clj activePosition)
@@ -447,7 +474,8 @@
                                  (fn [new-pos]
                                    (onActivePositionChange (clj->js new-pos))))
     :on-active-entity-change onActiveEntityChange
-    :on-entity-close onEntityClose}])
+    :on-entity-close onEntityClose
+    :on-entity-color-change onEntityColorChange}])
 
 ;; ============================================================
 ;; Exported React component

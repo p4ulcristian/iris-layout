@@ -1,7 +1,50 @@
 (ns iris-layout.components.entity-tile
   "Entity tile component — renders a single entity inside the Body layout."
   (:require [reagent.core :as r]
+            [react-dom :as react-dom]
             [iris-layout.components.touch-drag :as touch-drag]))
+
+(def preset-colors
+  ["#6366f1" "#8b5cf6" "#ec4899" "#f43f5e" "#f97316"
+   "#eab308" "#22c55e" "#14b8a6" "#06b6d4" "#3b82f6" "#8b949e"])
+
+(defn color-picker-popover
+  "Color swatch popover for changing tile color. Rendered as a portal to escape overflow:hidden."
+  [entity-id on-color-change show? anchor-rect active-color]
+  (let [close-handler (atom nil)]
+    (r/create-class
+      {:component-did-mount
+       (fn [_]
+         (let [handler (fn [_] (reset! show? false))]
+           (reset! close-handler handler)
+           (js/setTimeout #(.addEventListener js/document "click" handler) 0)))
+       :component-will-unmount
+       (fn [_]
+         (when @close-handler
+           (.removeEventListener js/document "click" @close-handler)))
+       :reagent-render
+       (fn [entity-id on-color-change _show? anchor-rect active-color]
+         (let [colors (if (and active-color (not (some #{active-color} preset-colors)))
+                        (cons active-color preset-colors)
+                        preset-colors)]
+           (react-dom/createPortal
+             (r/as-element
+               [:div.iris-color-picker-popover
+                {:style {:top (+ (:bottom anchor-rect) 6)
+                         :left (:left anchor-rect)}
+                 :on-click (fn [e] (.stopPropagation e))}
+                (doall
+                 (for [color colors]
+                   ^{:key color}
+                   [:div {:class (str "iris-color-swatch"
+                                      (when (= color active-color) " iris-color-swatch-active"))
+                          :style {:background color}
+                          :on-click (fn [e]
+                                      (.stopPropagation e)
+                                      (when on-color-change
+                                        (on-color-change entity-id color))
+                                      (reset! show? false))}]))])
+           js/document.body)))})))
 
 (defn calculate-half
   "Determine which half of the tile the cursor is closest to."
@@ -97,13 +140,16 @@
 ;; --- Main component ---
 
 (defn entity-tile-component
-  [node on-split on-close focused? entities render-entity-tile _parent-ctx on-active-entity-change]
+  [node on-split on-close focused? entities render-entity-tile _parent-ctx on-active-entity-change on-entity-color-change]
   (let [drag-over (r/atom false)
         closest-edge (r/atom nil)
         dragging (r/atom false)
+        color-picker-open? (r/atom false)
+        color-picker-rect (r/atom nil)
         split-ref (atom on-split)
         close-ref (atom on-close)
         active-entity-change-ref (atom on-active-entity-change)
+        color-change-ref (atom on-entity-color-change)
         tile-ref (atom nil)
         touch-watch-key (str "tile-" (:id node))
         drop-watch-key (str "tile-drop-" (:id node))
@@ -133,12 +179,14 @@
          (remove-watch touch-drag/drop-result drop-watch-key))
 
        :reagent-render
-       (fn [node on-split on-close focused? entities render-entity-tile _parent-ctx on-active-entity-change]
+       (fn [node on-split on-close focused? entities render-entity-tile _parent-ctx on-active-entity-change on-entity-color-change]
          (reset! split-ref on-split)
          (reset! close-ref on-close)
          (reset! active-entity-change-ref on-active-entity-change)
+         (reset! color-change-ref on-entity-color-change)
          (let [entity (get entities (:entity-id node))
-               entity-name (or (:name entity) (:entity-id node))]
+               entity-name (or (:name entity) (:entity-id node))
+               tile-color (or (:color entity) "#6366f1")]
            [:div
             {:ref #(reset! tile-ref %)
              :data-tile-id (:id node)
@@ -173,6 +221,18 @@
                                 (touch-drag/start-touch!
                                   (:id node) (:entity-id node) e))
               :on-touch-end (fn [_e] (handle-touch-end dragging))}
+             [:div {:style {:flex-shrink 0}}
+              [:div.iris-entity-tile-header-dot
+               {:style {:background tile-color}
+                :on-click (fn [e]
+                            (.stopPropagation e)
+                            (let [rect (.getBoundingClientRect (.-currentTarget e))]
+                              (reset! color-picker-rect
+                                      {:top (.-top rect) :left (.-left rect)
+                                       :bottom (.-bottom rect) :width (.-width rect)}))
+                            (swap! color-picker-open? not))}]
+              (when @color-picker-open?
+                [color-picker-popover (:entity-id node) @color-change-ref color-picker-open? @color-picker-rect tile-color])]
              [:span.iris-entity-tile-header-name entity-name]
              [:button.iris-entity-tile-header-close
               {:on-click (fn [e]
