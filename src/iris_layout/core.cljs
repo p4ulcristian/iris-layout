@@ -10,9 +10,17 @@
             [iris-layout.components.entity-tile-group :as entity-tile-group]
             [iris-layout.components.entity-tile :as entity-tile]
             [iris-layout.components.touch-drag :as touch-drag]
-            [iris-layout.components.command-center :as command-center]))
+            [iris-layout.components.command-center :as command-center])
+  (:require-macros [iris-layout.css :refer [inline-css]]))
 
 (r/set-default-compiler! (r/create-compiler {:function-components true}))
+
+(defn- inject-css! []
+  (when-not (js/document.getElementById "iris-layout-styles")
+    (let [style (.createElement js/document "style")]
+      (set! (.-id style) "iris-layout-styles")
+      (set! (.-textContent style) (inline-css))
+      (.appendChild (.-head js/document) style))))
 
 
 ;; ============================================================
@@ -235,6 +243,7 @@
    (CSS translate) to show the active workspace. Hold Alt to open the
    Command Center overlay."
   [_]
+  (inject-css!)
   (let [command-center? (r/atom false)
         props-ref (atom nil)
         nav-drag-edge (r/atom nil)
