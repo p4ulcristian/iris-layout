@@ -4,11 +4,7 @@
             [iris-layout.layout :as layout]
             [iris-layout.util :as util]))
 
-(defn- pos-key
-  [[x y]]
-  (str x "," y))
-
-;; Drag state: {:entity-id "..." :source-ws-key "0,0"}
+;; Drag state: {:tile-id "..." :entity-id "..." :source-ws-id "uuid"}
 ;; Set only after mouse moves past threshold.
 (def ^:private picked-tile (r/atom nil))
 
@@ -27,7 +23,7 @@
           (let [dx (- (.-clientX e) (:start-x pd))
                 dy (- (.-clientY e) (:start-y pd))]
             (when (> (+ (js/Math.abs dx) (js/Math.abs dy)) drag-threshold)
-              (reset! picked-tile (select-keys pd [:tile-id :entity-id :source-ws-key]))
+              (reset! picked-tile (select-keys pd [:tile-id :entity-id :source-ws-id]))
               (reset! pending-drag nil))))))
     (reset! on-up
       (fn [_]
@@ -41,13 +37,13 @@
 (defn- command-center-mini-layout
   "Recursively render a mini layout tree with close buttons on each tile.
    Drag a tile to move it to another workspace."
-  [layout-node entities on-close-entity source-ws-key]
+  [layout-node entities on-close-entity source-ws-id]
   (case (layout/node-type layout-node)
     :tile
     (let [entity (get entities (keyword (:entity-id layout-node)))
           picked? (and @picked-tile
                        (= (:tile-id @picked-tile) (:id layout-node))
-                       (= (:source-ws-key @picked-tile) source-ws-key))]
+                       (= (:source-ws-id @picked-tile) source-ws-id))]
       [:div.iris-command-center-tile
        {:style (merge
                  (when (:color entity) {"--iris-tile-color" (:color entity)})
@@ -59,7 +55,7 @@
                          (.preventDefault e)
                          (reset! pending-drag {:tile-id (:id layout-node)
                                               :entity-id (:entity-id layout-node)
-                                              :source-ws-key source-ws-key
+                                              :source-ws-id source-ws-id
                                               :start-x (.-clientX e)
                                               :start-y (.-clientY e)})
                          (start-drag-listeners!))}
@@ -78,8 +74,8 @@
           ratio (:ratio layout-node 0.5)]
       [:div.iris-command-center-split
        {:class (if horiz? "horizontal" "vertical")}
-       [:div {:style {:flex (str ratio)}} [command-center-mini-layout c1 entities on-close-entity source-ws-key]]
-       [:div {:style {:flex (str (- 1 ratio))}} [command-center-mini-layout c2 entities on-close-entity source-ws-key]]])
+       [:div {:style {:flex (str ratio)}} [command-center-mini-layout c1 entities on-close-entity source-ws-id]]
+       [:div {:style {:flex (str (- 1 ratio))}} [command-center-mini-layout c2 entities on-close-entity source-ws-id]]])
 
     nil))
 
@@ -93,7 +89,7 @@
   (let [hover-timer (atom nil)]
     (fn [cols rows workspaces active-position entities render-entity-tile
          on-active-position-change on-workspaces-change command-center?]
-      (let [active-key (pos-key active-position)
+      (let [[ax ay] active-position
             view-cols (+ cols 1)
             view-rows (+ rows 1)
             picked @picked-tile]
@@ -111,16 +107,15 @@
            (doall
              (for [y (range view-rows)
                    x (range view-cols)]
-               (let [k (pos-key [x y])
-                     workspace (get workspaces k)
-                     active? (= k active-key)
+               (let [[ws-id workspace] (util/workspace-at workspaces x y)
+                     active? (and (= x ax) (= y ay))
                      has-layout? (some? (:layout workspace))
-                     is-drop-target? (and picked (not= (:source-ws-key picked) k))]
-                 ^{:key k}
+                     is-drop-target? (and picked (not= (:source-ws-id picked) ws-id))]
+                 ^{:key (str x "," y)}
                  [:div {:class (str "iris-command-center-cell"
                                     (when active? " iris-command-center-cell-active")
                                     (when is-drop-target? " iris-command-center-cell-drop-target"))
-                        :on-mouse-enter (when (not active?)
+                        :on-mouse-enter (when-not active?
                                           (fn [_]
                                             (when-not picked
                                               (when @hover-timer (js/clearTimeout @hover-timer))
@@ -135,21 +130,22 @@
                                             (reset! hover-timer nil)))
                         :on-mouse-up (fn [e]
                                        (.stopPropagation e)
-                                       (when (and picked (not= (:source-ws-key picked) k))
-                                         (let [{:keys [tile-id entity-id source-ws-key]} picked
-                                               source-ws (get workspaces source-ws-key)
+                                       (when (and picked (not= (:source-ws-id picked) ws-id))
+                                         (let [{:keys [tile-id entity-id source-ws-id]} picked
+                                               source-ws (get workspaces source-ws-id)
                                                source-layout (layout/remove-tile-from-layout (:layout source-ws) tile-id)
-                                               target-ws (get workspaces k)
+                                               actual-ws-id (or ws-id (util/generate-id))
+                                               actual-ws (or workspace {:x x :y y :layout nil})
                                                new-tile {:type :tile :id (util/generate-id) :entity-id entity-id}
-                                               target-layout (if (:layout target-ws)
+                                               target-layout (if (:layout actual-ws)
                                                                {:type :split :id (util/generate-id)
                                                                 :direction "horizontal" :ratio 0.5
-                                                                :children [(:layout target-ws) new-tile]}
+                                                                :children [(:layout actual-ws) new-tile]}
                                                                new-tile)
                                                cleaned (if source-layout
-                                                          (assoc workspaces source-ws-key {:layout source-layout})
-                                                          (dissoc workspaces source-ws-key))
-                                               updated (assoc cleaned k {:layout target-layout})]
+                                                         (assoc workspaces source-ws-id (assoc source-ws :layout source-layout))
+                                                         (dissoc workspaces source-ws-id))
+                                               updated (assoc cleaned actual-ws-id (assoc actual-ws :layout target-layout))]
                                            (on-workspaces-change updated)
                                            (reset! picked-tile nil))))
                         :on-click (fn [e]
@@ -163,9 +159,9 @@
                          (let [new-layout (layout/remove-tile-from-layout (:layout workspace) tile-id)]
                            (on-workspaces-change
                              (if new-layout
-                               (assoc workspaces k {:layout new-layout})
-                               (dissoc workspaces k))))))
-                     k])])))]
+                               (assoc workspaces ws-id (assoc workspace :layout new-layout))
+                               (dissoc workspaces ws-id))))))
+                     ws-id])])))]
           [:div.iris-command-center-palette
            (doall
              (for [[entity-id entity] entities
@@ -177,15 +173,15 @@
                  (fn [e]
                    (.stopPropagation e)
                    (when on-workspaces-change
-                     (let [ak (pos-key active-position)
-                           existing (:layout (get workspaces ak))
+                     (let [[active-id active-ws] (util/workspace-at workspaces ax ay)
+                           existing (:layout active-ws)
                            new-tile {:type :tile :id (util/generate-id) :entity-id (name entity-id)}
                            new-layout (if existing
                                         {:type :split :id (util/generate-id)
                                          :direction "horizontal" :ratio 0.5
                                          :children [existing new-tile]}
                                         new-tile)]
-                       (on-workspaces-change (assoc workspaces ak {:layout new-layout})))))}
+                       (on-workspaces-change (assoc workspaces active-id (assoc active-ws :layout new-layout))))))}
                 (if-let [icon (:icon entity)]
                   [:div.iris-command-center-palette-icon [:> icon {}]]
                   [:div.iris-command-center-palette-dot

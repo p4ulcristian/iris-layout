@@ -73,11 +73,6 @@
 ;; Grid — 2D workspace grid with camera-based navigation
 ;; ============================================================
 
-(defn- pos-key
-  "Convert [x y] to string key 'x,y'."
-  [[x y]]
-  (str x "," y))
-
 (defn- direction->delta
   "Map a direction keyword to [dx dy]."
   [dir]
@@ -88,18 +83,12 @@
     :down  [0 1]))
 
 (defn- grid-dimensions
-  "Compute grid bounds from workspace keys. Returns [cols rows]."
+  "Compute grid bounds from workspace positions. Returns [cols rows]."
   [workspaces]
   (if (empty? workspaces)
     [1 1]
-    (let [positions (map (fn [k]
-                           (let [parts (.split k ",")]
-                             [(js/parseInt (aget parts 0))
-                              (js/parseInt (aget parts 1))]))
-                         (keys workspaces))
-          max-x (apply max (map first positions))
-          max-y (apply max (map second positions))]
-      [(inc max-x) (inc max-y)])))
+    [(inc (apply max (map :x (vals workspaces))))
+     (inc (apply max (map :y (vals workspaces))))]))
 
 (defn- can-navigate?
   "Check if navigation in a direction is allowed."
@@ -108,12 +97,10 @@
         [x y] active-position
         new-x (+ x dx)
         new-y (+ y dy)
-        new-key (pos-key [new-x new-y])
-        active-key (pos-key active-position)
-        current-empty? (nil? (:layout (get workspaces active-key)))
-        target-exists? (contains? workspaces new-key)
-        target-has-layout? (and target-exists?
-                                (:layout (get workspaces new-key)))]
+        [_ active-ws] (util/workspace-at workspaces x y)
+        current-empty? (nil? (:layout active-ws))
+        [_ target-ws] (util/workspace-at workspaces new-x new-y)
+        target-has-layout? (boolean (and target-ws (:layout target-ws)))]
     (and (>= new-x 0) (>= new-y 0)
          (not (and current-empty? (not target-has-layout?))))))
 
@@ -125,11 +112,11 @@
     (when (can-navigate? dir workspaces active-position)
       (let [[dx dy] (direction->delta dir)
             [x y] active-position
-            new-pos [(+ x dx) (+ y dy)]
-            new-key (pos-key new-pos)
-            target-exists? (contains? workspaces new-key)]
-        (when (and (not target-exists?) on-workspaces-change)
-          (on-workspaces-change (assoc workspaces new-key {:layout nil})))
+            new-x (+ x dx)
+            new-y (+ y dy)
+            new-pos [new-x new-y]]
+        (when (and (not (util/workspace-at workspaces new-x new-y)) on-workspaces-change)
+          (on-workspaces-change (assoc workspaces (util/generate-id) {:x new-x :y new-y :layout nil})))
         (when on-active-position-change
           (on-active-position-change new-pos))))))
 
@@ -157,42 +144,44 @@
 
 (defn- update-workspaces-with-cleanup
   "Update a workspace's layout and remove dragged tile from all other workspaces."
-  [workspaces target-key new-layout]
+  [workspaces target-id new-layout]
   (let [dragged-tile @entity-tile/drag-source-tile]
     (if dragged-tile
       (reduce-kv
-        (fn [acc ws-key ws-data]
-          (if (= ws-key target-key)
-            (assoc acc ws-key {:layout new-layout})
-            (let [cleaned (layout/remove-tile-from-layout
-                            (:layout ws-data) dragged-tile)]
-              (assoc acc ws-key {:layout cleaned}))))
+        (fn [acc ws-id ws-data]
+          (if (= ws-id target-id)
+            (assoc acc ws-id (assoc ws-data :layout new-layout))
+            (assoc acc ws-id (assoc ws-data :layout
+                               (layout/remove-tile-from-layout (:layout ws-data) dragged-tile)))))
         {} workspaces)
-      (assoc workspaces target-key {:layout new-layout}))))
+      (update workspaces target-id assoc :layout new-layout))))
 
 (defn- handle-empty-workspace-drop
   "Handle drop on an empty workspace — create a tile for the dropped entity."
-  [e k workspaces on-workspaces-change]
+  [e ws-id x y workspaces on-workspaces-change]
   (.preventDefault e)
   (let [raw (.getData (.-dataTransfer e) "text/plain")]
     (try
       (let [data (js/JSON.parse raw)
             entity-id (.-entityId data)]
         (when entity-id
-          (let [new-layout {:type :tile :id (util/generate-id) :entity-id entity-id}
-                updated (update-workspaces-with-cleanup workspaces k new-layout)]
+          (let [actual-id (or ws-id (util/generate-id))
+                workspaces (if ws-id workspaces
+                               (assoc workspaces actual-id {:x x :y y :layout nil}))
+                new-layout {:type :tile :id (util/generate-id) :entity-id entity-id}
+                updated (update-workspaces-with-cleanup workspaces actual-id new-layout)]
             (on-workspaces-change updated))))
       (catch :default _ nil))))
 
 (defn- grid-cell
   "Render a single grid cell (workspace or empty placeholder)."
-  [k workspace active? props]
+  [ws-id workspace x y active? props]
   (let [{:keys [entities render-entity-tile active-entity
                 on-workspaces-change on-entity-close
                 on-active-entity-change on-entity-color-change workspaces]} props]
     [:div {:class (str "iris-grid-cell"
                        (when active? " iris-grid-cell-active"))
-           :data-position k}
+           :data-position (str x "," y)}
      (if (:layout workspace)
        [body-stage-component
         {:layout (:layout workspace)
@@ -205,24 +194,23 @@
          (fn [new-layout]
            (when on-workspaces-change
              (on-workspaces-change
-               (update-workspaces-with-cleanup workspaces k new-layout))))
+               (update-workspaces-with-cleanup workspaces ws-id new-layout))))
          :on-entity-close on-entity-close}]
        [:div.iris-empty-workspace
         {:on-drag-over (fn [e] (.preventDefault e))
          :on-drop (fn [e]
                     (when on-workspaces-change
-                      (handle-empty-workspace-drop e k workspaces on-workspaces-change)))}])]))
+                      (handle-empty-workspace-drop e ws-id x y workspaces on-workspaces-change)))}])]))
 
 (defn- grid-canvas
   "Render the CSS grid canvas with all workspace cells."
   [cols rows workspaces active-position props]
-  (let [active-key (pos-key active-position)]
+  (let [[ax ay] active-position]
     (for [y (range rows)]
       (for [x (range cols)]
-        (let [k (pos-key [x y])
-              workspace (get workspaces k)]
-          ^{:key k}
-          [grid-cell k workspace (= k active-key) props])))))
+        (let [[ws-id workspace] (util/workspace-at workspaces x y)]
+          ^{:key (str x "," y)}
+          [grid-cell ws-id workspace x y (and (= x ax) (= y ay)) props])))))
 
 (def ^:private grid-gap 16)
 
@@ -287,23 +275,22 @@
                    @touch-nav-happened?)
           (let [{:keys [source-tile-id source-entity-id]} drop-info
                 {:keys [workspaces active-position on-workspaces-change]} @props-ref
-                active-key (pos-key active-position)]
-            (when (and source-entity-id on-workspaces-change)
+                [ax ay] active-position
+                [active-id active-ws] (util/workspace-at workspaces ax ay)]
+            (when (and source-entity-id on-workspaces-change active-id)
               (let [new-tile {:type :tile :id (util/generate-id) :entity-id source-entity-id}
-                    existing-layout (:layout (get workspaces active-key))
+                    existing-layout (:layout active-ws)
                     new-layout (if existing-layout
-                                 ;; Add alongside existing layout
                                  {:type :split :id (util/generate-id)
                                   :direction "horizontal" :ratio 0.5
                                   :children [existing-layout new-tile]}
                                  new-tile)
                     updated (reduce-kv
-                              (fn [acc ws-key ws-data]
-                                (if (= ws-key active-key)
-                                  (assoc acc ws-key {:layout new-layout})
-                                  (let [cleaned (layout/remove-tile-from-layout
-                                                  (:layout ws-data) source-tile-id)]
-                                    (assoc acc ws-key {:layout cleaned}))))
+                              (fn [acc ws-id ws-data]
+                                (if (= ws-id active-id)
+                                  (assoc acc ws-id (assoc ws-data :layout new-layout))
+                                  (assoc acc ws-id (assoc ws-data :layout
+                                                     (layout/remove-tile-from-layout (:layout ws-data) source-tile-id)))))
                               {} workspaces)]
                 (on-workspaces-change updated))))
           (reset! touch-drag/drop-result nil))
@@ -348,19 +335,13 @@
 ;; ============================================================
 
 (defn js->workspaces
-  "Convert a JS workspaces object {\"x,y\": {layout: ...}} to CLJS map."
+  "Convert a JS workspaces object {uuid: {x, y, layout}} to CLJS map.
+   Workspace IDs stay as strings; values are fully keywordized."
   [js-obj]
   (when js-obj
     (into {}
-          (map (fn [k]
-                 (let [v (unchecked-get js-obj k)]
-                   [k {:layout (js->clj (unchecked-get v "layout") :keywordize-keys true)}])))
+          (map (fn [k] [k (js->clj (unchecked-get js-obj k) :keywordize-keys true)]))
           (js/Object.keys js-obj))))
-
-(defn workspaces->js
-  "Convert CLJS workspaces map to JS object."
-  [workspaces]
-  (clj->js workspaces))
 
 (defn- iris-layout
   "Wrapper that converts JS props to CLJS for grid-component."
@@ -375,7 +356,7 @@
     :render-entity-tile renderEntityTile
     :on-workspaces-change (when onWorkspacesChange
                             (fn [new-workspaces]
-                              (onWorkspacesChange (workspaces->js new-workspaces))))
+                              (onWorkspacesChange (clj->js new-workspaces))))
     :on-active-position-change (when onActivePositionChange
                                  (fn [new-pos]
                                    (onActivePositionChange (clj->js new-pos))))
@@ -397,8 +378,8 @@
 
    Props (camelCase JS object):
 
-     workspaces              - Object keyed by 'x,y' position strings.
-                               Each value: { layout: LayoutNode }
+     workspaces              - Object keyed by UUID strings.
+                               Each value: { x, y, layout: LayoutNode }
                                LayoutNode is either:
                                  { type: 'tile',  id, 'entity-id' }
                                  { type: 'split', id, direction: 'horizontal'|'vertical',
