@@ -95,7 +95,7 @@
            (when @color-picker-open?
              [entity-tile/color-picker-popover (:entity-id fs-node) on-entity-color-change color-picker-open? @color-picker-rect fs-color])]
           [:span.iris-entity-tile-header-name
-           (or (:name fs-entity) (:entity-id fs-node))]
+           (:name fs-entity)]
           [:button.iris-entity-tile-header-close
            {:on-click (fn [e]
                         (.stopPropagation e)
@@ -126,11 +126,11 @@
    :on-entity-color-change  - fn(entity-id, color) for tile color changes"
   [_]
   (let [props-ref (atom nil)
-        handle-split (fn [tile-id entity-id split-direction source-type half]
+        handle-split (fn [tile-id entity-id split-direction source-type half & [source-tile-id]]
                        (let [{:keys [layout on-layout-change]} @props-ref
                              before? (or (= half :left) (= half :top))
                              base-layout (if (= source-type :tile)
-                                           (or (layout/remove-entity-from-layout layout entity-id)
+                                           (or (layout/remove-tile-from-layout layout source-tile-id)
                                                layout)
                                            layout)
                              target-after (layout/find-tile base-layout tile-id)
@@ -142,13 +142,14 @@
                                             entity-id new-tile-id split-id before?))]
                          (when (and new-layout on-layout-change)
                            (on-layout-change new-layout))))
-        handle-close (fn [entity-id]
+        handle-close (fn [tile-id]
                        (let [{:keys [layout on-layout-change on-entity-close]} @props-ref
-                             new-layout (layout/remove-entity-from-layout layout entity-id)]
+                             tile (layout/find-tile layout tile-id)
+                             new-layout (layout/remove-tile-from-layout layout tile-id)]
                          (when on-layout-change
                            (on-layout-change new-layout))
                          (when on-entity-close
-                           (on-entity-close entity-id))))
+                           (on-entity-close (:entity-id tile)))))
         handle-ratio (fn [split-id new-ratio]
                        (let [{:keys [layout on-layout-change]} @props-ref
                              new-layout (layout/update-split-ratio layout split-id new-ratio)]
@@ -248,16 +249,16 @@
    [:div.iris-nav-semicircle]])
 
 (defn- update-workspaces-with-cleanup
-  "Update a workspace's layout and remove dragged entity from all other workspaces."
+  "Update a workspace's layout and remove dragged tile from all other workspaces."
   [workspaces target-key new-layout]
-  (let [dragged-entity @entity-tile/drag-source-entity]
-    (if dragged-entity
+  (let [dragged-tile @entity-tile/drag-source-tile]
+    (if dragged-tile
       (reduce-kv
         (fn [acc ws-key ws-data]
           (if (= ws-key target-key)
             (assoc acc ws-key {:layout new-layout})
-            (let [cleaned (layout/remove-entity-from-layout
-                            (:layout ws-data) dragged-entity)]
+            (let [cleaned (layout/remove-tile-from-layout
+                            (:layout ws-data) dragged-tile)]
               (assoc acc ws-key {:layout cleaned}))))
         {} workspaces)
       (assoc workspaces target-key {:layout new-layout}))))
@@ -377,7 +378,7 @@
         (when (and drop-info
                    (not (:target-tile-id drop-info))
                    @touch-nav-happened?)
-          (let [{:keys [source-entity-id]} drop-info
+          (let [{:keys [source-tile-id source-entity-id]} drop-info
                 {:keys [workspaces active-position on-workspaces-change]} @props-ref
                 active-key (pos-key active-position)]
             (when (and source-entity-id on-workspaces-change)
@@ -393,8 +394,8 @@
                               (fn [acc ws-key ws-data]
                                 (if (= ws-key active-key)
                                   (assoc acc ws-key {:layout new-layout})
-                                  (let [cleaned (layout/remove-entity-from-layout
-                                                  (:layout ws-data) source-entity-id)]
+                                  (let [cleaned (layout/remove-tile-from-layout
+                                                  (:layout ws-data) source-tile-id)]
                                     (assoc acc ws-key {:layout cleaned}))))
                               {} workspaces)]
                 (on-workspaces-change updated))))

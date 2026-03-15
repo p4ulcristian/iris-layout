@@ -108,7 +108,7 @@
           (cond
             (and (= (.-source data) "tile") (.-entityId data))
             (when (not= (.-tileId data) (:id node))
-              (@split-ref (:id node) (.-entityId data) direction :tile half))
+              (@split-ref (:id node) (.-entityId data) direction :tile half (.-tileId data)))
 
             (= (.-source data) "sidebar")
             (when-let [eid (.-entityId data)]
@@ -171,7 +171,7 @@
                 (let [{:keys [source-tile-id source-entity-id half]} drop-info
                       direction (half->direction half)]
                   (when (not= source-tile-id (:id node))
-                    (@split-ref (:id node) source-entity-id direction :tile half)))
+                    (@split-ref (:id node) source-entity-id direction :tile half source-tile-id)))
                 (reset! touch-drag/drop-result nil)
                 (clear-drop-state! drag-over closest-edge))))]
     (r/create-class
@@ -187,7 +187,7 @@
          (reset! active-entity-change-ref on-active-entity-change)
          (reset! color-change-ref on-entity-color-change)
          (let [entity (get entities (:entity-id node))
-               entity-name (or (:name entity) (:entity-id node))
+               entity-name (:name entity)
                tile-color (or (:color entity) "#6366f1")
                is-fullscreen? (= @fullscreen-tile (:id node))]
            [:div
@@ -263,13 +263,13 @@
              [:button.iris-entity-tile-header-close
               {:on-click (fn [e]
                            (.stopPropagation e)
-                           (when @close-ref (@close-ref (:entity-id node))))}
+                           (when @close-ref (@close-ref (:id node))))}
               "\u00d7"]]
 
             ;; Content
             [:div.iris-entity-tile-content
-             (when (and entity render-entity-tile)
-               [:> render-entity-tile entity])]
+             (when render-entity-tile
+               [:> render-entity-tile (or entity {:id (:entity-id node)})])]
 
             ;; Drop indicator
             [drop-indicator @closest-edge @drag-over]]))})))

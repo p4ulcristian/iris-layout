@@ -98,6 +98,26 @@
     (or (find-tile-by-entity (first (:children tree)) entity-id)
         (find-tile-by-entity (second (:children tree)) entity-id))))
 
+(defn remove-tile-from-layout
+  "Remove a tile by tile-id and collapse empty splits.
+   Returns nil if the entire tree becomes empty."
+  [tree tile-id]
+  (letfn [(remove-and-collapse [node]
+            (cond
+              (nil? node) nil
+              (= (node-type node) :tile)
+              (if (= (:id node) tile-id) nil node)
+              (= (node-type node) :split)
+              (let [[c1 c2] (:children node)
+                    new-c1 (remove-and-collapse c1)
+                    new-c2 (remove-and-collapse c2)]
+                (cond
+                  (nil? new-c1) new-c2
+                  (nil? new-c2) new-c1
+                  :else (assoc node :children [new-c1 new-c2])))
+              :else node))]
+    (remove-and-collapse tree)))
+
 (defn remove-entity-from-layout
   "Remove an entity from the layout tree and collapse empty splits.
    Returns nil if the entire tree becomes empty."

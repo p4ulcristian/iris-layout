@@ -26,7 +26,7 @@
           (let [dx (- (.-clientX e) (:start-x pd))
                 dy (- (.-clientY e) (:start-y pd))]
             (when (> (+ (js/Math.abs dx) (js/Math.abs dy)) drag-threshold)
-              (reset! picked-tile (select-keys pd [:entity-id :source-ws-key]))
+              (reset! picked-tile (select-keys pd [:tile-id :entity-id :source-ws-key]))
               (reset! pending-drag nil))))))
     (reset! on-up
       (fn [_]
@@ -45,7 +45,7 @@
     :tile
     (let [entity (get entities (:entity-id layout-node))
           picked? (and @picked-tile
-                       (= (:entity-id @picked-tile) (:entity-id layout-node))
+                       (= (:tile-id @picked-tile) (:id layout-node))
                        (= (:source-ws-key @picked-tile) source-ws-key))]
       [:div.iris-command-center-tile
        {:style (merge
@@ -56,17 +56,18 @@
         :on-mouse-down (fn [e]
                          (.stopPropagation e)
                          (.preventDefault e)
-                         (reset! pending-drag {:entity-id (:entity-id layout-node)
+                         (reset! pending-drag {:tile-id (:id layout-node)
+                                              :entity-id (:entity-id layout-node)
                                               :source-ws-key source-ws-key
                                               :start-x (.-clientX e)
                                               :start-y (.-clientY e)})
                          (start-drag-listeners!))}
        [:span.iris-command-center-tile-name
-        (or (:name entity) (:entity-id layout-node))]
+        (:name entity)]
        [:button.iris-command-center-tile-close
         {:on-click (fn [e]
                      (.stopPropagation e)
-                     (on-close-entity (:entity-id layout-node)))
+                     (on-close-entity (:id layout-node)))
          :on-mouse-down (fn [e] (.stopPropagation e))}
         "\u00d7"]])
 
@@ -134,9 +135,9 @@
                         :on-mouse-up (fn [e]
                                        (.stopPropagation e)
                                        (when (and picked (not= (:source-ws-key picked) k))
-                                         (let [{:keys [entity-id source-ws-key]} picked
+                                         (let [{:keys [tile-id entity-id source-ws-key]} picked
                                                source-ws (get workspaces source-ws-key)
-                                               source-layout (layout/remove-entity-from-layout (:layout source-ws) entity-id)
+                                               source-layout (layout/remove-tile-from-layout (:layout source-ws) tile-id)
                                                target-ws (get workspaces k)
                                                new-tile {:type :tile :id (str "iris-" (random-uuid)) :entity-id entity-id}
                                                target-layout (if (:layout target-ws)
@@ -156,9 +157,9 @@
                                       (reset! command-center? false)))}
                   (when has-layout?
                     [command-center-mini-layout (:layout workspace) entities
-                     (fn [entity-id]
+                     (fn [tile-id]
                        (when on-workspaces-change
-                         (let [new-layout (layout/remove-entity-from-layout (:layout workspace) entity-id)]
+                         (let [new-layout (layout/remove-tile-from-layout (:layout workspace) tile-id)]
                            (on-workspaces-change
                              (if new-layout
                                (assoc workspaces k {:layout new-layout})
@@ -166,7 +167,8 @@
                      k])])))]
           [:div.iris-command-center-palette
            (doall
-             (for [[entity-id entity] entities]
+             (for [[entity-id entity] entities
+                   :when (not (:instance entity))]
                ^{:key entity-id}
                [:div.iris-command-center-palette-item
                 {:style {"--iris-tile-color" (or (:color entity) "#6366f1")}
@@ -188,4 +190,4 @@
                   [:div.iris-command-center-palette-dot
                    {:style {:background (or (:color entity) "#6366f1")}}])
                 [:span.iris-command-center-palette-name
-                 (or (:name entity) entity-id)]]))]]]))))
+                 (:name entity)]]))]]]))))
