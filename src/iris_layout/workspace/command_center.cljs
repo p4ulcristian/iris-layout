@@ -74,98 +74,124 @@
 
     nil))
 
+(defn cell-on-mouse-up
+  "Handle tile drop on a workspace cell."
+  [picked workspaces pos on-workspaces-change]
+  (fn [e]
+    (.stopPropagation e)
+    (when (and picked (not= (:source-pos picked) pos))
+      (let [{:keys [tile-id entity-id source-pos]} picked
+            source-ws     (get workspaces source-pos)
+            source-layout (layout/remove-tile-from-layout (:layout source-ws) tile-id)
+            target-ws     (or (get workspaces pos) {:layout nil})
+            new-tile      {:type :tile :id (util/generate-id) :entity-id entity-id}
+            target-layout (if (:layout target-ws)
+                            {:type :split :id (util/generate-id)
+                             :direction "horizontal" :ratio 0.5
+                             :children [(:layout target-ws) new-tile]}
+                            new-tile)
+            cleaned  (if source-layout
+                       (assoc workspaces source-pos (assoc source-ws :layout source-layout))
+                       (dissoc workspaces source-pos))
+            updated  (assoc cleaned pos (assoc target-ws :layout target-layout))]
+        (on-workspaces-change updated)
+        (reset! picked-tile nil)))))
+
+(defn cell-on-click
+  "Handle workspace navigation on cell click."
+  [picked pos on-active-position-change command-center?]
+  (fn [e]
+    (.stopPropagation e)
+    (when-not picked
+      (when on-active-position-change
+        (on-active-position-change pos))
+      (reset! command-center? false))))
+
+(defn grid-cell
+  "Render a single workspace cell in the command center grid."
+  [pos workspace workspaces active-pos entities picked on-workspaces-change on-active-position-change command-center?]
+  (let [active?      (= pos active-pos)
+        has-layout?  (some? (:layout workspace))
+        drop-target? (and picked (not= (:source-pos picked) pos))]
+    ^{:key (str (first pos) "," (second pos))}
+    [:div {:class (str "iris-command-center-cell"
+                       (when active?      " iris-command-center-cell-active")
+                       (when drop-target? " iris-command-center-cell-drop-target"))
+           :on-mouse-up (cell-on-mouse-up picked workspaces pos on-workspaces-change)
+           :on-click    (cell-on-click picked pos on-active-position-change command-center?)}
+     (when has-layout?
+       [command-center-mini-layout (:layout workspace) entities
+        (fn [tile-id]
+          (when on-workspaces-change
+            (let [new-layout (layout/remove-tile-from-layout (:layout workspace) tile-id)]
+              (on-workspaces-change
+                (if new-layout
+                  (assoc workspaces pos (assoc workspace :layout new-layout))
+                  (dissoc workspaces pos))))))
+        pos])]))
+
+(defn workspace-grid
+  "Render the grid of all workspace cells."
+  [cols rows workspaces active-position entities picked on-workspaces-change on-active-position-change command-center?]
+  (let [view-cols (+ cols 1)
+        view-rows (+ rows 1)
+        [ax ay] active-position]
+    [:div.iris-command-center-grid
+     {:style {:grid-template-columns (str "repeat(" view-cols ", 1fr)")
+              :grid-template-rows    (str "repeat(" view-rows ", 1fr)")}}
+     (doall
+       (for [y (range view-rows)
+             x (range view-cols)]
+         (let [pos [x y]]
+           [grid-cell pos (get workspaces pos) workspaces [ax ay] entities picked
+            on-workspaces-change on-active-position-change command-center?])))]))
+
+(defn palette-item
+  "Render a single entity in the command center palette."
+  [entity-id entity active-pos workspaces on-workspaces-change]
+  ^{:key entity-id}
+  [:div.iris-command-center-palette-item
+   {:style {"--iris-tile-color" (or (:color entity) "#6366f1")}
+    :on-click (fn [e]
+                (.stopPropagation e)
+                (when on-workspaces-change
+                  (let [active-ws  (get workspaces active-pos)
+                        existing   (:layout active-ws)
+                        new-tile   {:type :tile :id (util/generate-id) :entity-id (name entity-id)}
+                        new-layout (if existing
+                                     {:type :split :id (util/generate-id)
+                                      :direction "horizontal" :ratio 0.5
+                                      :children [existing new-tile]}
+                                     new-tile)]
+                    (on-workspaces-change
+                      (assoc workspaces active-pos (assoc active-ws :layout new-layout))))))}
+   (if-let [icon (:icon entity)]
+     [:div.iris-command-center-palette-icon [icon]]
+     [:div.iris-command-center-palette-dot
+      {:style {:background (or (:color entity) "#6366f1")}}])
+   [:span.iris-command-center-palette-name (:name entity)]])
+
+(defn entity-palette
+  "Render the entity palette with all available entities."
+  [entities active-position workspaces on-workspaces-change]
+  [:div.iris-command-center-palette
+   (doall
+     (for [[entity-id entity] entities
+           :when (not (:instance entity))]
+       [palette-item entity-id entity active-position workspaces on-workspaces-change]))])
+
 (defn command-center-overlay
   "Full-screen overlay showing all workspaces as a mini grid plus an entity palette.
    Opens on Alt key hold or corner button click."
-  [_cols _rows _workspaces _active-position _entities _render-entity-tile
-   _on-active-position-change _on-workspaces-change _command-center?]
-  (fn [cols rows workspaces active-position entities _render-entity-tile
-       on-active-position-change on-workspaces-change command-center?]
-      (let [[ax ay] active-position
-            view-cols (+ cols 1)
-            view-rows (+ rows 1)
-            picked    @picked-tile]
-        [:div {:class (str "iris-command-center"
-                           (when @command-center? " iris-command-center-open"))
-               :style (when picked {:cursor "grabbing"})}
-         [:div.iris-command-center-backdrop
-          {:on-click (fn [_] (when-not picked (reset! command-center? false)))}]
-         [:div.iris-command-center-content
-          [:div.iris-command-center-grid
-           {:style {:grid-template-columns (str "repeat(" view-cols ", 1fr)")
-                    :grid-template-rows    (str "repeat(" view-rows ", 1fr)")}}
-           (doall
-             (for [y (range view-rows)
-                   x (range view-cols)]
-               (let [pos          [x y]
-                     workspace    (get workspaces pos)
-                     active?      (and (= x ax) (= y ay))
-                     has-layout?  (some? (:layout workspace))
-                     drop-target? (and picked (not= (:source-pos picked) pos))]
-                 ^{:key (str x "," y)}
-                 [:div {:class (str "iris-command-center-cell"
-                                    (when active?      " iris-command-center-cell-active")
-                                    (when drop-target? " iris-command-center-cell-drop-target"))
-                        :on-mouse-up
-                        (fn [e]
-                          (.stopPropagation e)
-                          (when (and picked (not= (:source-pos picked) pos))
-                            (let [{:keys [tile-id entity-id source-pos]} picked
-                                  source-ws     (get workspaces source-pos)
-                                  source-layout (layout/remove-tile-from-layout (:layout source-ws) tile-id)
-                                  target-ws     (or workspace {:layout nil})
-                                  new-tile      {:type :tile :id (util/generate-id) :entity-id entity-id}
-                                  target-layout (if (:layout target-ws)
-                                                  {:type :split :id (util/generate-id)
-                                                   :direction "horizontal" :ratio 0.5
-                                                   :children [(:layout target-ws) new-tile]}
-                                                  new-tile)
-                                  cleaned  (if source-layout
-                                             (assoc workspaces source-pos (assoc source-ws :layout source-layout))
-                                             (dissoc workspaces source-pos))
-                                  updated  (assoc cleaned pos (assoc target-ws :layout target-layout))]
-                              (on-workspaces-change updated)
-                              (reset! picked-tile nil))))
-                        :on-click (fn [e]
-                                    (.stopPropagation e)
-                                    (when-not picked
-                                      (when on-active-position-change
-                                        (on-active-position-change pos))
-                                      (reset! command-center? false)))}
-                  (when has-layout?
-                    [command-center-mini-layout (:layout workspace) entities
-                     (fn [tile-id]
-                       (when on-workspaces-change
-                         (let [new-layout (layout/remove-tile-from-layout (:layout workspace) tile-id)]
-                           (on-workspaces-change
-                             (if new-layout
-                               (assoc workspaces pos (assoc workspace :layout new-layout))
-                               (dissoc workspaces pos))))))
-                     pos])])))]
-          [:div.iris-command-center-palette
-           (doall
-             (for [[entity-id entity] entities
-                   :when (not (:instance entity))]
-               ^{:key entity-id}
-               [:div.iris-command-center-palette-item
-                {:style {"--iris-tile-color" (or (:color entity) "#6366f1")}
-                 :on-click
-                 (fn [e]
-                   (.stopPropagation e)
-                   (when on-workspaces-change
-                     (let [active-pos [ax ay]
-                           active-ws  (get workspaces active-pos)
-                           existing   (:layout active-ws)
-                           new-tile   {:type :tile :id (util/generate-id) :entity-id (name entity-id)}
-                           new-layout (if existing
-                                        {:type :split :id (util/generate-id)
-                                         :direction "horizontal" :ratio 0.5
-                                         :children [existing new-tile]}
-                                        new-tile)]
-                       (on-workspaces-change
-                         (assoc workspaces active-pos (assoc active-ws :layout new-layout))))))}
-                (if-let [icon (:icon entity)]
-                  [:div.iris-command-center-palette-icon [icon]]
-                  [:div.iris-command-center-palette-dot
-                   {:style {:background (or (:color entity) "#6366f1")}}])
-                [:span.iris-command-center-palette-name (:name entity)]]))]]])))
+  [cols rows workspaces active-position entities _render-entity-tile
+   on-active-position-change on-workspaces-change command-center?]
+  (let [picked @picked-tile]
+    [:div {:class (str "iris-command-center"
+                       (when @command-center? " iris-command-center-open"))
+           :style (when picked {:cursor "grabbing"})}
+     [:div.iris-command-center-backdrop
+      {:on-click (fn [_] (when-not picked (reset! command-center? false)))}]
+     [:div.iris-command-center-content
+      [workspace-grid cols rows workspaces active-position entities picked
+       on-workspaces-change on-active-position-change command-center?]
+      [entity-palette entities active-position workspaces on-workspaces-change]]])))
