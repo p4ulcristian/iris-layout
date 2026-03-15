@@ -95,8 +95,9 @@
             view-cols (+ cols 1)
             view-rows (+ rows 1)
             picked @picked-tile]
-        [:div.iris-command-center
-         {:style (when picked {:cursor "grabbing"})}
+        [:div {:class (str "iris-command-center"
+                          (when @command-center? " iris-command-center-open"))
+               :style (when picked {:cursor "grabbing"})}
          [:div.iris-command-center-backdrop
           {:on-click (fn [_]
                        (when-not picked

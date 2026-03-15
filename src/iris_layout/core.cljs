@@ -431,10 +431,9 @@
                         :stroke-width 1.5}]
               [:circle {:cx 12 :cy 12 :r 2.5
                         :fill "currentColor"}]])]]
-         (when @command-center?
-           [command-center/command-center-overlay cols rows workspaces active-position
-            entities render-entity-tile on-active-position-change
-            on-workspaces-change command-center?])]))))
+         [command-center/command-center-overlay cols rows workspaces active-position
+          entities render-entity-tile on-active-position-change
+          on-workspaces-change command-center?]]))))
 
 ;; ============================================================
 ;; JS <-> CLJS: Grid conversions
