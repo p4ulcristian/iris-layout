@@ -49,7 +49,7 @@
        :on-active-entity-change #(swap! state assoc :active-entity %)
        :on-entity-color-change  (fn [entity-id color]
                                   (swap! state assoc-in [:entities (keyword entity-id) :color] color))
-       :logo [:i.fa-solid.fa-eye]}]]))
+       :logo [:i.fa-solid.fa-eye]}]))
 
 (defonce root (rdc/create-root (js/document.getElementById "app")))
 
