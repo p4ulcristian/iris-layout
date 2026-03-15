@@ -185,13 +185,12 @@
    Opens on Alt key hold or corner button click."
   [cols rows workspaces active-position entities _render-entity-tile
    on-active-position-change on-workspaces-change command-center?]
-  (let [picked @picked-tile]
-    [:div {:class (str "iris-command-center"
-                       (when @command-center? " iris-command-center-open"))
-           :style (when picked {:cursor "grabbing"})}
-     [:div.iris-command-center-backdrop
-      {:on-click (fn [_] (when-not picked (reset! command-center? false)))}]
-     [:div.iris-command-center-content
-      [workspace-grid cols rows workspaces active-position entities picked
-       on-workspaces-change on-active-position-change command-center?]
-      [entity-palette entities active-position workspaces on-workspaces-change]]])))
+  [:div {:class (str "iris-command-center"
+                     (when @command-center? " iris-command-center-open"))
+         :style (when @picked-tile {:cursor "grabbing"})}
+   [:div.iris-command-center-backdrop
+    {:on-click (fn [_] (when-not @picked-tile (reset! command-center? false)))}]
+   [:div.iris-command-center-content
+    [workspace-grid cols rows workspaces active-position entities @picked-tile
+     on-workspaces-change on-active-position-change command-center?]
+    [entity-palette entities active-position workspaces on-workspaces-change]]]))
