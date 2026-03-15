@@ -183,7 +183,7 @@
                                         new-tile)]
                        (on-workspaces-change (assoc workspaces active-id (assoc active-ws :layout new-layout))))))}
                 (if-let [icon (:icon entity)]
-                  [:div.iris-command-center-palette-icon [:> icon {}]]
+                  [:div.iris-command-center-palette-icon [icon]]
                   [:div.iris-command-center-palette-dot
                    {:style {:background (or (:color entity) "#6366f1")}}])
                 [:span.iris-command-center-palette-name
