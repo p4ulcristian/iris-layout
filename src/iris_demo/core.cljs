@@ -11,18 +11,18 @@
    :repl     {:id "repl"     :name "REPL"          :type "repl"     :color "#8b5cf6" :icon (fn [] [:i.fa-solid.fa-chevron-right])}})
 
 (def initial-workspaces
-  {"ws-1" {:x 0 :y 0 :layout {:type "split" :id "s1" :direction "horizontal" :ratio 0.6
-                               :children [{:type "tile" :id "t1" :entity-id "editor"}
-                                          {:type "split" :id "s2" :direction "vertical" :ratio 0.6
-                                           :children [{:type "tile" :id "t2" :entity-id "terminal"}
-                                                      {:type "tile" :id "t3" :entity-id "repl"}]}]}}
-   "ws-2" {:x 1 :y 0 :layout {:type "split" :id "s3" :direction "horizontal" :ratio 0.5
-                               :children [{:type "tile" :id "t4" :entity-id "editor"}
-                                          {:type "tile" :id "t5" :entity-id "browser"}]}}
-   "ws-3" {:x 0 :y 1 :layout {:type "tile" :id "t6" :entity-id "notes"}}
-   "ws-4" {:x 1 :y 1 :layout {:type "split" :id "s4" :direction "vertical" :ratio 0.5
-                               :children [{:type "tile" :id "t7" :entity-id "terminal"}
-                                          {:type "tile" :id "t8" :entity-id "repl"}]}}})
+  {[0 0] {:layout {:type "split" :id "s1" :direction "horizontal" :ratio 0.6
+                   :children [{:type "tile" :id "t1" :entity-id "editor"}
+                               {:type "split" :id "s2" :direction "vertical" :ratio 0.6
+                                :children [{:type "tile" :id "t2" :entity-id "terminal"}
+                                           {:type "tile" :id "t3" :entity-id "repl"}]}]}}
+   [1 0] {:layout {:type "split" :id "s3" :direction "horizontal" :ratio 0.5
+                   :children [{:type "tile" :id "t4" :entity-id "editor"}
+                               {:type "tile" :id "t5" :entity-id "browser"}]}}
+   [0 1] {:layout {:type "tile" :id "t6" :entity-id "notes"}}
+   [1 1] {:layout {:type "split" :id "s4" :direction "vertical" :ratio 0.5
+                   :children [{:type "tile" :id "t7" :entity-id "terminal"}
+                               {:type "tile" :id "t8" :entity-id "repl"}]}}})
 
 (defn entity-tile [entity]
   [:div {:style {:display "flex" :align-items "center" :justify-content "center"
