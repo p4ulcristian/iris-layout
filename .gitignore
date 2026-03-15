@@ -9,3 +9,4 @@ dist/cljs-runtime/
 .playwright-mcp/
 *.DS_Store
 ._*
+.defnext-chat/
