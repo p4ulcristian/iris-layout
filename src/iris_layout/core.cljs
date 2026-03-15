@@ -19,29 +19,48 @@
 ;; Body stage — single workspace layout renderer
 ;; ============================================================
 
-(defn- handle-split [layout on-layout-change tile-id entity-id split-direction source-type half & [source-tile-id]]
+(defn- handle-split
+  "Insert a new tile into the layout by splitting an existing one.
+
+   tile-id        - target tile to split
+   entity-id      - entity to place in the new tile
+   split-direction - :horizontal or :vertical
+   source-type    - :tile (drag from another tile) or :sidebar (drag from sidebar)
+   half           - :left :right :top :bottom — which side of the target was dropped on
+   source-tile-id - when source-type is :tile, the tile being moved (removed before splitting)"
+  [layout on-layout-change tile-id entity-id split-direction source-type half & [source-tile-id]]
   (let [before? (or (= half :left) (= half :top))
         base-layout (if (= source-type :tile)
                       (or (layout/remove-tile-from-layout layout source-tile-id) layout)
                       layout)
-        target-after (layout/find-tile base-layout tile-id)
-        new-layout (when target-after
+        target (layout/find-tile base-layout tile-id)
+        new-layout (when target
                      (layout/split-tile base-layout tile-id split-direction
                                         entity-id (util/generate-id) (util/generate-id) before?))]
     (when (and new-layout on-layout-change)
       (on-layout-change new-layout))))
 
-(defn- handle-close [layout on-layout-change on-entity-close tile-id]
+(defn- handle-close
+  "Remove a tile from the layout and notify the consumer.
+   Calls on-layout-change with the pruned layout (nil if the last tile is closed).
+   Calls on-entity-close with the entity-id of the closed tile."
+  [layout on-layout-change on-entity-close tile-id]
   (let [tile (layout/find-tile layout tile-id)
         new-layout (layout/remove-tile-from-layout layout tile-id)]
     (when on-layout-change (on-layout-change new-layout))
     (when on-entity-close (on-entity-close (:entity-id tile)))))
 
-(defn- handle-ratio [layout on-layout-change split-id new-ratio]
+(defn- handle-ratio
+  "Update the split ratio of a split node.
+   new-ratio is a float 0–1 representing the size of the first child."
+  [layout on-layout-change split-id new-ratio]
   (when on-layout-change
     (on-layout-change (layout/update-split-ratio layout split-id new-ratio))))
 
 (defn- body-stage-component
+  "Renders a single workspace — a resizable, drag-drop tile layout.
+   Wires up split, close, and resize handlers and delegates rendering
+   to entity-tile-group."
   [{:keys [layout entities render-entity-tile active-entity
            on-layout-change on-active-entity-change on-entity-color-change on-entity-close]}]
   [:div.iris-body-stage
