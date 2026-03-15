@@ -353,7 +353,8 @@
     :active-position (js->clj activePosition)
     :active-entity activeEntity
     :entities (js->clj entities :keywordize-keys true)
-    :render-entity-tile renderEntityTile
+    :render-entity-tile (when renderEntityTile
+                          (fn [entity] [:> renderEntityTile (clj->js entity)]))
     :on-workspaces-change (when onWorkspacesChange
                             (fn [new-workspaces]
                               (onWorkspacesChange (clj->js new-workspaces))))

@@ -262,7 +262,7 @@
             ;; Content
             [:div.iris-entity-tile-content
              (when render-entity-tile
-               [:> render-entity-tile (or entity {:id (:entity-id node)})])]
+               [render-entity-tile (or entity {:id (:entity-id node)})])]
 
             ;; Drop indicator
             [drop-indicator @closest-edge @drag-over]]))})))
