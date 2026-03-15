@@ -156,14 +156,9 @@
                            (on-layout-change new-layout))))]
     (fn [{:keys [layout entities render-entity-tile active-entity on-layout-change on-active-entity-change on-entity-color-change] :as props}]
       (reset! props-ref props)
-      (let [fs-id @entity-tile/fullscreen-tile
-            fs-node (when fs-id (layout/find-tile layout fs-id))
-            fs-entity (when fs-node (get entities (:entity-id fs-node)))]
-        [:div.iris-body-stage
-         [entity-tile-group/entity-tile-group
-          layout handle-split handle-close handle-ratio active-entity entities render-entity-tile on-active-entity-change on-entity-color-change]
-         (when fs-node
-           [fullscreen-overlay fs-node fs-entity render-entity-tile on-entity-color-change])]))))
+      [:div.iris-body-stage
+       [entity-tile-group/entity-tile-group
+        layout handle-split handle-close handle-ratio active-entity entities render-entity-tile on-active-entity-change on-entity-color-change]])))
 
 
 ;; ============================================================
@@ -406,7 +401,7 @@
           (reset! touch-drag/drop-result nil))
         (reset! touch-nav-happened? false)))
     (fn [{:keys [workspaces active-position entities render-entity-tile
-                 on-active-position-change on-workspaces-change] :as props}]
+                 on-active-position-change on-workspaces-change logo] :as props}]
       (reset! props-ref props)
       (let [[cols rows] (grid-dimensions workspaces)
             dragging? (or @entity-tile/drag-source-tile @touch-drag/touch-state)
@@ -420,6 +415,22 @@
           [:div.iris-grid-canvas
            {:style (camera-style cols rows active-position)}
            (grid-canvas cols rows workspaces active-position props)]]
+         ;; Quarter-circle trigger button (bottom-left)
+         [:div.iris-command-center-trigger
+          {:on-click (fn [_] (reset! command-center? true))}
+          [:svg.iris-command-center-trigger-bg {:viewBox "0 0 48 48" :width "100%" :height "100%"}
+           [:path {:d "M0 48 L0 0 A48 48 0 0 1 48 48 Z"
+                   :fill "currentColor"}]]
+          [:div.iris-command-center-trigger-logo
+           (if logo
+             logo
+             [:svg {:viewBox "0 0 24 24" :width "20" :height "20"}
+              [:circle {:cx 12 :cy 12 :r 7
+                        :fill "none"
+                        :stroke "currentColor"
+                        :stroke-width 1.5}]
+              [:circle {:cx 12 :cy 12 :r 2.5
+                        :fill "currentColor"}]])]]
          (when @command-center?
            [command-center/command-center-overlay cols rows workspaces active-position
             entities render-entity-tile on-active-position-change
@@ -452,7 +463,7 @@
   "Wrapper that converts JS props to CLJS for grid-component."
   [{:keys [workspaces activePosition activeEntity entities renderEntityTile
            onWorkspacesChange onActivePositionChange onActiveEntityChange onEntityClose
-           onEntityColorChange]}]
+           onEntityColorChange logo]}]
   [grid-component
    {:workspaces (js->workspaces workspaces)
     :active-position (js->clj activePosition)
@@ -467,7 +478,8 @@
                                    (onActivePositionChange (clj->js new-pos))))
     :on-active-entity-change onActiveEntityChange
     :on-entity-close onEntityClose
-    :on-entity-color-change onEntityColorChange}])
+    :on-entity-color-change onEntityColorChange
+    :logo logo}])
 
 ;; ============================================================
 ;; Exported React component

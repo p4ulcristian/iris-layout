@@ -78,6 +78,8 @@
 (defonce drag-source-tile (atom nil))
 (defonce drag-source-entity (atom nil))
 (defonce fullscreen-tile (r/atom nil))
+;; FLIP animation state: {:top :left :width :height} of the tile before going fullscreen
+(defonce fullscreen-rect (atom nil))
 
 ;; --- Extracted handler fns ---
 
@@ -186,15 +188,33 @@
          (reset! color-change-ref on-entity-color-change)
          (let [entity (get entities (:entity-id node))
                entity-name (or (:name entity) (:entity-id node))
-               tile-color (or (:color entity) "#6366f1")]
+               tile-color (or (:color entity) "#6366f1")
+               is-fullscreen? (= @fullscreen-tile (:id node))]
            [:div
-            {:ref #(reset! tile-ref %)
+            {:ref (fn [el]
+                    (reset! tile-ref el)
+                    ;; FLIP: when going fullscreen, apply initial transform then animate
+                    (when (and el is-fullscreen? @fullscreen-rect)
+                      (let [{:keys [top left width height]} @fullscreen-rect
+                            vw (.-innerWidth js/window)
+                            vh (.-innerHeight js/window)
+                            sx (/ width vw)
+                            sy (/ height vh)]
+                        (set! (.-transform (.-style el))
+                              (str "translate(" left "px, " top "px) scale(" sx ", " sy ")"))
+                        (js/requestAnimationFrame
+                          (fn []
+                            (js/requestAnimationFrame
+                              (fn []
+                                (set! (.-transform (.-style el)) "none")
+                                (reset! fullscreen-rect nil))))))))
              :data-tile-id (:id node)
              :class (str "iris-entity-tile"
                          (when focused? " iris-entity-tile-focused")
                          (when (not focused?) " iris-entity-tile-unfocused")
                          (when @drag-over " iris-drag-over")
-                         (when @dragging " iris-dragging"))
+                         (when @dragging " iris-dragging")
+                         (when is-fullscreen? " iris-entity-tile-fullscreen"))
              :style (cond-> {:flex 1}
                             (:color entity) (assoc "--iris-tile-color" (:color entity)))
              :on-mouse-enter (fn [_]
@@ -213,8 +233,14 @@
              {:draggable true
               :on-double-click (fn [_]
                                  (if (= @fullscreen-tile (:id node))
-                                   (reset! fullscreen-tile nil)
-                                   (reset! fullscreen-tile (:id node))))
+                                   (do (reset! fullscreen-rect nil)
+                                       (reset! fullscreen-tile nil))
+                                   (do (when-let [el @tile-ref]
+                                         (let [rect (.getBoundingClientRect el)]
+                                           (reset! fullscreen-rect
+                                                   {:top (.-top rect) :left (.-left rect)
+                                                    :width (.-width rect) :height (.-height rect)})))
+                                       (reset! fullscreen-tile (:id node)))))
               :on-drag-start #(handle-drag-start % node dragging)
               :on-drag-end (fn [_] (handle-drag-end dragging))
               :on-touch-start (fn [e]

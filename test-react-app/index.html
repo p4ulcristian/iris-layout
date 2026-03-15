@@ -128,6 +128,7 @@
             onEntityColorChange: (entityId, color) => {
               setEntities(prev => ({...prev, [entityId]: {...prev[entityId], color}}))
             },
+            logo: h('i', {className: 'fa-solid fa-eye'}),
           })
         )
       )
