@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Iris Layout</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
   <link rel="stylesheet" id="iris-css" />
   <script>document.getElementById('iris-css').href = './dist/styles.css?v=' + Date.now()</script>
   <script type="importmap">
@@ -54,12 +55,14 @@
     import { createRoot } from 'react-dom/client'
     import { IrisLayout } from './dist/iris-layout.js'
 
+    const icon = (cls) => h('i', {className: cls})
+
     const ENTITIES = {
-      editor: { id: 'editor', name: 'editor.cljs', type: 'code', color: '#6366f1' },
-      terminal: { id: 'terminal', name: 'Terminal', type: 'terminal', color: '#10b981' },
-      browser: { id: 'browser', name: 'Preview', type: 'browser', color: '#f59e0b' },
-      notes: { id: 'notes', name: 'Notes', type: 'notes', color: '#ec4899' },
-      repl: { id: 'repl', name: 'REPL', type: 'repl', color: '#8b5cf6' },
+      editor: { id: 'editor', name: 'editor.cljs', type: 'code', color: '#6366f1', icon: icon('fa-solid fa-code') },
+      terminal: { id: 'terminal', name: 'Terminal', type: 'terminal', color: '#10b981', icon: icon('fa-solid fa-terminal') },
+      browser: { id: 'browser', name: 'Preview', type: 'browser', color: '#f59e0b', icon: icon('fa-solid fa-globe') },
+      notes: { id: 'notes', name: 'Notes', type: 'notes', color: '#ec4899', icon: icon('fa-solid fa-note-sticky') },
+      repl: { id: 'repl', name: 'REPL', type: 'repl', color: '#8b5cf6', icon: icon('fa-solid fa-chevron-right') },
     }
 
     const INITIAL_WORKSPACES = {

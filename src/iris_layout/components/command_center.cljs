@@ -102,7 +102,9 @@
                                                :children [existing-layout new-tile]}
                                               new-tile)]
                              (on-workspaces-change (assoc workspaces active-key {:layout new-layout})))))}
-            [:div.iris-command-center-palette-dot
-             {:style {:background (or (:color entity) "#6366f1")}}]
+            (if-let [icon (:icon entity)]
+              [:div.iris-command-center-palette-icon icon]
+              [:div.iris-command-center-palette-dot
+               {:style {:background (or (:color entity) "#6366f1")}}])
             [:span.iris-command-center-palette-name
              (or (:name entity) entity-id)]]))]]]))

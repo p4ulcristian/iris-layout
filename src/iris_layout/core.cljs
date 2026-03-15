@@ -50,16 +50,22 @@
 
 (defn js->entities
   "Convert a JS entities object to a CLJS map.
-   Top-level keys stay as strings (entity IDs), nested keys are keywordized."
+   Top-level keys stay as strings (entity IDs), nested keys are keywordized.
+   React elements (icon, etc.) are preserved as-is."
   [js-obj]
   (when js-obj
-    (let [obj (js->clj js-obj)]
+    (let [keys (js/Object.keys js-obj)]
       (into {}
-            (map (fn [[k v]]
-                   [k (if (map? v)
-                        (into {} (map (fn [[k2 v2]] [(keyword k2) v2]) v))
-                        v)]))
-            obj))))
+            (map (fn [k]
+                   (let [v (unchecked-get js-obj k)]
+                     [k (if (object? v)
+                          (let [vkeys (js/Object.keys v)]
+                            (into {}
+                                  (map (fn [k2]
+                                         [(keyword k2) (unchecked-get v k2)]))
+                                  vkeys))
+                          v)])))
+            keys))))
 
 
 ;; ============================================================
