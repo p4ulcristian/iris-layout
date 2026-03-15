@@ -25,14 +25,11 @@
    tile-id        - target tile to split
    entity-id      - entity to place in the new tile
    split-direction - :horizontal or :vertical
-   source-type    - :tile (drag from another tile) or :sidebar (drag from sidebar)
    half           - :left :right :top :bottom — which side of the target was dropped on
-   source-tile-id - when source-type is :tile, the tile being moved (removed before splitting)"
-  [layout on-layout-change tile-id entity-id split-direction source-type half & [source-tile-id]]
+   source-tile-id - the tile being moved; removed from the layout before splitting"
+  [layout on-layout-change tile-id entity-id split-direction half source-tile-id]
   (let [before? (or (= half :left) (= half :top))
-        base-layout (if (= source-type :tile)
-                      (or (layout/remove-tile-from-layout layout source-tile-id) layout)
-                      layout)
+        base-layout (or (layout/remove-tile-from-layout layout source-tile-id) layout)
         target (layout/find-tile base-layout tile-id)
         new-layout (when target
                      (layout/split-tile base-layout tile-id split-direction

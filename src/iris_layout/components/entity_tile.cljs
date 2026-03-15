@@ -105,17 +105,10 @@
           raw (.getData (.-dataTransfer e) "text/plain")]
       (try
         (let [data (js/JSON.parse raw)]
-          (cond
-            (and (= (.-source data) "tile") (.-entityId data))
-            (when (not= (.-tileId data) (:id node))
-              (@split-ref (:id node) (.-entityId data) direction :tile half (.-tileId data)))
-
-            (= (.-source data) "sidebar")
-            (when-let [eid (.-entityId data)]
-              (@split-ref (:id node) eid direction :sidebar half))))
-        (catch :default _
-          (when (and raw (not= raw ""))
-            (@split-ref (:id node) raw direction :sidebar))))))
+          (when (and (= (.-source data) "tile") (.-entityId data)
+                     (not= (.-tileId data) (:id node)))
+            (@split-ref (:id node) (.-entityId data) direction half (.-tileId data))))
+        (catch :default _ nil))))
   (clear-drop-state! drag-over closest-edge))
 
 (defn- handle-touch-end [dragging]
@@ -171,7 +164,7 @@
                 (let [{:keys [source-tile-id source-entity-id half]} drop-info
                       direction (half->direction half)]
                   (when (not= source-tile-id (:id node))
-                    (@split-ref (:id node) source-entity-id direction :tile half source-tile-id)))
+                    (@split-ref (:id node) source-entity-id direction half source-tile-id)))
                 (reset! touch-drag/drop-result nil)
                 (clear-drop-state! drag-over closest-edge))))]
     (r/create-class
