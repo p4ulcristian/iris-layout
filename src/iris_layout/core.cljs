@@ -362,7 +362,7 @@
   [workspaces]
   (clj->js workspaces))
 
-(defn- grid-wrapper
+(defn- iris-layout
   "Wrapper that converts JS props to CLJS for grid-component."
   [{:keys [workspaces activePosition activeEntity entities renderEntityTile
            onWorkspacesChange onActivePositionChange onActiveEntityChange onEntityClose
@@ -425,4 +425,4 @@
 
    CSS: import '@p4ulcristian/iris-layout/styles.css'
    Customize gap: set --iris-grid-gap on a parent element."
-  (r/reactify-component grid-wrapper))
+  (r/reactify-component iris-layout))
