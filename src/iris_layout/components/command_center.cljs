@@ -74,7 +74,7 @@
 
     :split
     (let [[c1 c2] (:children layout-node)
-          horiz? (= (keyword (:direction layout-node)) :horizontal)
+          horiz? (= (:direction layout-node) "horizontal")
           ratio (:ratio layout-node 0.5)]
       [:div.iris-command-center-split
        {:class (if horiz? "horizontal" "vertical")}
@@ -143,7 +143,7 @@
                                                new-tile {:type :tile :id (util/generate-id) :entity-id entity-id}
                                                target-layout (if (:layout target-ws)
                                                                {:type :split :id (util/generate-id)
-                                                                :direction :horizontal :ratio 0.5
+                                                                :direction "horizontal" :ratio 0.5
                                                                 :children [(:layout target-ws) new-tile]}
                                                                new-tile)
                                                cleaned (if source-layout
@@ -182,7 +182,7 @@
                            new-tile {:type :tile :id (util/generate-id) :entity-id (name entity-id)}
                            new-layout (if existing
                                         {:type :split :id (util/generate-id)
-                                         :direction :horizontal :ratio 0.5
+                                         :direction "horizontal" :ratio 0.5
                                          :children [existing new-tile]}
                                         new-tile)]
                        (on-workspaces-change (assoc workspaces ak {:layout new-layout})))))}

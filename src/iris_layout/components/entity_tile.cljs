@@ -60,8 +60,8 @@
 
 (defn half->direction [half]
   (if (or (= half :left) (= half :right))
-    :horizontal
-    :vertical))
+    "horizontal"
+    "vertical"))
 
 (def direction-labels
   {:top "Split above" :bottom "Split below"

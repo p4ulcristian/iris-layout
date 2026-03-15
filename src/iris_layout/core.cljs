@@ -24,7 +24,7 @@
 
    tile-id        - target tile to split
    entity-id      - entity to place in the new tile
-   split-direction - :horizontal or :vertical
+   split-direction - \"horizontal\" or \"vertical\"
    half           - :left :right :top :bottom — which side of the target was dropped on
    source-tile-id - the tile being moved; removed from the layout before splitting"
   [layout on-layout-change tile-id entity-id split-direction half source-tile-id]
@@ -294,7 +294,7 @@
                     new-layout (if existing-layout
                                  ;; Add alongside existing layout
                                  {:type :split :id (util/generate-id)
-                                  :direction :horizontal :ratio 0.5
+                                  :direction "horizontal" :ratio 0.5
                                   :children [existing-layout new-tile]}
                                  new-tile)
                     updated (reduce-kv

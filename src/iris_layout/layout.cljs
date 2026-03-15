@@ -175,4 +175,4 @@
   (let [new-tile (create-tile tile-id entity-id)]
     (if (nil? layout)
       new-tile
-      (create-split split-id :horizontal layout new-tile 0.5))))
+      (create-split split-id "horizontal" layout new-tile 0.5))))

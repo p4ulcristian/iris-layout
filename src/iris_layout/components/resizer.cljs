@@ -17,10 +17,10 @@
                 (.add (.-classList parent) "iris-dragging")
                 (letfn [(calc-ratio [x y]
                           (let [rect (.getBoundingClientRect parent)
-                                relative-pos (if (= direction :horizontal)
+                                relative-pos (if (= direction "horizontal")
                                                (- x (.-left rect))
                                                (- y (.-top rect)))
-                                size (if (= direction :horizontal)
+                                size (if (= direction "horizontal")
                                        (.-width rect)
                                        (.-height rect))]
                             (/ relative-pos size)))
@@ -56,7 +56,7 @@
 
         [:div
          {:class (str "iris-resizer "
-                      (name direction)
+                      direction
                       (when @dragging " dragging"))
           :on-mouse-down
           (fn [e]

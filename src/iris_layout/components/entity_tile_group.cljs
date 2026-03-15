@@ -16,10 +16,10 @@
 
     :split
     (let [[child1 child2] (:children node)
-          direction (keyword (:direction node))
+          direction (:direction node)
           ratio (:ratio node)]
       [:div.iris-entity-tile-group
-       {:class (name direction)}
+       {:class direction}
        [:div {:style {:flex ratio}}
         [entity-tile-group child1 on-split on-close on-ratio-change active-entity entities render-entity-tile on-active-entity-change on-entity-color-change]]
        [resizer/resizer direction (:id node) on-ratio-change]
