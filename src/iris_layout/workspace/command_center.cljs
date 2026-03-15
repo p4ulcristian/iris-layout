@@ -128,7 +128,10 @@
                               (reset! picked-tile nil))))
                         :on-click (fn [e]
                                     (.stopPropagation e)
-                                    (when-not picked (reset! command-center? false)))}
+                                    (when-not picked
+                                      (when on-active-position-change
+                                        (on-active-position-change pos))
+                                      (reset! command-center? false)))}
                   (when has-layout?
                     [command-center-mini-layout (:layout workspace) entities
                      (fn [tile-id]
