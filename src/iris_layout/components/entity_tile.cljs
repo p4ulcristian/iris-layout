@@ -186,7 +186,7 @@
          (reset! close-ref on-close)
          (reset! active-entity-change-ref on-active-entity-change)
          (reset! color-change-ref on-entity-color-change)
-         (let [entity (get entities (:entity-id node))
+         (let [entity (get entities (keyword (:entity-id node)))
                entity-name (:name entity)
                tile-color (or (:color entity) "#6366f1")
                is-fullscreen? (= @fullscreen-tile (:id node))]

@@ -12,58 +12,6 @@
             [iris-layout.components.touch-drag :as touch-drag]
             [iris-layout.components.command-center :as command-center]))
 
-;; ============================================================
-;; JS <-> CLJS boundary conversion
-;; ============================================================
-
-
-(defn js->entities
-  "Convert a JS entities object to a CLJS map.
-   Top-level keys stay as strings (entity IDs), nested keys are keywordized.
-   Icon values must be React component functions (not elements) to survive conversion."
-  [js-obj]
-  (when js-obj
-    (into {}
-          (map (fn [k] [k (js->clj (unchecked-get js-obj k) :keywordize-keys true)]))
-          (js/Object.keys js-obj))))
-
-
-;; ============================================================
-;; Fullscreen overlay
-;; ============================================================
-
-(defn- fullscreen-overlay
-  [fs-node fs-entity render-entity-tile on-entity-color-change]
-  (let [color-picker-open? (r/atom false)
-        color-picker-rect (r/atom nil)]
-    (fn [fs-node fs-entity render-entity-tile on-entity-color-change]
-      (let [fs-color (or (:color fs-entity) "#6366f1")]
-        [:div.iris-fullscreen-overlay
-         {:style (when (:color fs-entity) {"--iris-tile-color" (:color fs-entity)})}
-         [:div.iris-fullscreen-overlay-header
-          {:on-double-click (fn [_] (reset! entity-tile/fullscreen-tile nil))}
-          [:div {:style {:flex-shrink 0}}
-           [:div.iris-entity-tile-header-dot
-            {:style {:background fs-color}
-             :on-click (fn [e]
-                         (.stopPropagation e)
-                         (let [rect (.getBoundingClientRect (.-currentTarget e))]
-                           (reset! color-picker-rect
-                                   {:top (.-top rect) :left (.-left rect)
-                                    :bottom (.-bottom rect) :width (.-width rect)}))
-                         (swap! color-picker-open? not))}]
-           (when @color-picker-open?
-             [entity-tile/color-picker-popover (:entity-id fs-node) on-entity-color-change color-picker-open? @color-picker-rect fs-color])]
-          [:span.iris-entity-tile-header-name
-           (:name fs-entity)]
-          [:button.iris-entity-tile-header-close
-           {:on-click (fn [e]
-                        (.stopPropagation e)
-                        (reset! entity-tile/fullscreen-tile nil))}
-           "\u00d7"]]
-         [:div.iris-entity-tile-content
-          (when (and fs-entity render-entity-tile)
-            [:> render-entity-tile fs-entity])]]))))
 
 ;; ============================================================
 ;; Body stage — single workspace layout renderer
@@ -424,7 +372,7 @@
    {:workspaces (js->workspaces workspaces)
     :active-position (js->clj activePosition)
     :active-entity activeEntity
-    :entities (js->entities entities)
+    :entities (js->clj entities :keywordize-keys true)
     :render-entity-tile renderEntityTile
     :on-workspaces-change (when onWorkspacesChange
                             (fn [new-workspaces]

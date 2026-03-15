@@ -44,7 +44,7 @@
   [layout-node entities on-close-entity source-ws-key]
   (case (layout/node-type layout-node)
     :tile
-    (let [entity (get entities (:entity-id layout-node))
+    (let [entity (get entities (keyword (:entity-id layout-node)))
           picked? (and @picked-tile
                        (= (:tile-id @picked-tile) (:id layout-node))
                        (= (:source-ws-key @picked-tile) source-ws-key))]
@@ -179,7 +179,7 @@
                    (when on-workspaces-change
                      (let [ak (pos-key active-position)
                            existing (:layout (get workspaces ak))
-                           new-tile {:type :tile :id (util/generate-id) :entity-id entity-id}
+                           new-tile {:type :tile :id (util/generate-id) :entity-id (name entity-id)}
                            new-layout (if existing
                                         {:type :split :id (util/generate-id)
                                          :direction :horizontal :ratio 0.5

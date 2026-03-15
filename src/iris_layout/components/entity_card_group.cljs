@@ -60,7 +60,7 @@
           (when (seq entity-ids)
             [:div.iris-entity-card-group-entities
              (for [eid entity-ids]
-               (when-let [ent (get entities eid)]
+               (when-let [ent (get entities (keyword eid))]
                  ^{:key eid}
                  [:div.iris-entity-card
                   {:class (when (= eid active-entity) "iris-entity-card-active")
