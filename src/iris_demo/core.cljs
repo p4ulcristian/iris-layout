@@ -38,8 +38,7 @@
 
 (defn app []
   (let [{:keys [workspaces active-position active-entity entities]} @state]
-    [:div {:style {:height "100dvh"}}
-     [iris-layout/grid-component
+    [iris-layout/grid-component
       {:workspaces              workspaces
        :active-position         active-position
        :active-entity           active-entity
