@@ -1,6 +1,8 @@
 {:source-paths ["src"]
  :dependencies [[reagent "1.2.0"]
                 [binaryage/devtools "1.0.7"]]
+ :server-port 9640
+ :nrepl {:port 9641}
  :dev-http {5173 "public"}
  :builds
  {:app
