@@ -12,6 +12,8 @@
             [iris-layout.components.touch-drag :as touch-drag]
             [iris-layout.components.command-center :as command-center]))
 
+(r/set-default-compiler! (r/create-compiler {:function-components true}))
+
 
 ;; ============================================================
 ;; Body stage — single workspace layout renderer
