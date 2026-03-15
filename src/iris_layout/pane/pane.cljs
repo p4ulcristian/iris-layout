@@ -1,15 +1,15 @@
-(ns iris-layout.components.entity-tile-group
-  "Entity tile group — recursive layout tree renderer for the Body."
+(ns iris-layout.pane.pane
+  "Pane — recursive layout tree renderer."
   (:require [iris-layout.layout :as layout]
-            [iris-layout.components.entity-tile :as entity-tile]
-            [iris-layout.components.resizer :as resizer]))
+            [iris-layout.pane.tile :as tile]
+            [iris-layout.pane.resizer :as resizer]))
 
-(defn entity-tile-group
-  "Recursively render a layout tree node."
+(defn pane
+  "Recursively render a layout tree node as either a tile or a split pane."
   [node on-split on-close on-ratio-change active-entity entities render-entity-tile on-active-entity-change on-entity-color-change]
   (case (layout/node-type node)
     :tile
-    [entity-tile/entity-tile-component
+    [tile/entity-tile-component
      node on-split on-close
      (= (:entity-id node) active-entity)
      entities render-entity-tile nil on-active-entity-change on-entity-color-change]
@@ -21,9 +21,9 @@
       [:div.iris-entity-tile-group
        {:class direction}
        [:div {:style {:flex ratio}}
-        [entity-tile-group child1 on-split on-close on-ratio-change active-entity entities render-entity-tile on-active-entity-change on-entity-color-change]]
+        [pane child1 on-split on-close on-ratio-change active-entity entities render-entity-tile on-active-entity-change on-entity-color-change]]
        [resizer/resizer direction (:id node) on-ratio-change]
        [:div {:style {:flex (- 1 ratio)}}
-        [entity-tile-group child2 on-split on-close on-ratio-change active-entity entities render-entity-tile on-active-entity-change on-entity-color-change]]])
+        [pane child2 on-split on-close on-ratio-change active-entity entities render-entity-tile on-active-entity-change on-entity-color-change]]])
 
     [:div "Unknown node type"]))

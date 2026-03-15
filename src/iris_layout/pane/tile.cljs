@@ -1,8 +1,8 @@
-(ns iris-layout.components.entity-tile
-  "Entity tile component — renders a single entity inside the Body layout."
+(ns iris-layout.pane.tile
+  "Tile component — renders a single entity inside the pane layout."
   (:require [reagent.core :as r]
             [react-dom :as react-dom]
-            [iris-layout.components.touch-drag :as touch-drag]))
+            [iris-layout.drag.touch :as touch-drag]))
 
 (def preset-colors
   "Default color palette available in the tile color picker."
@@ -192,7 +192,7 @@
   [node entity-name tile-color dragging close-ref
    color-picker-open? color-picker-rect color-change-ref tile-ref]
   [:div.iris-entity-tile-header
-   {:draggable     true
+   {:draggable       true
     :on-double-click (fn [_] (toggle-fullscreen! tile-ref node))
     :on-drag-start   #(handle-drag-start % node dragging)
     :on-drag-end     (fn [_] (handle-drag-end dragging))
@@ -245,18 +245,18 @@
   "Renders a single entity tile with drag-and-drop, touch drag, fullscreen, and color-picker support.
    Mounts touch-drag watches on creation and removes them on unmount."
   [node on-split on-close focused? entities render-entity-tile _parent-ctx on-active-entity-change on-entity-color-change]
-  (r/with-let [drag-over              (r/atom false)
-               closest-edge           (r/atom nil)
-               dragging               (r/atom false)
-               color-picker-open?     (r/atom false)
-               color-picker-rect      (r/atom nil)
-               split-ref              (atom on-split)
-               close-ref              (atom on-close)
-               active-entity-chg-ref  (atom on-active-entity-change)
-               color-change-ref       (atom on-entity-color-change)
-               tile-ref               (atom nil)
-               touch-watch-key        (str "tile-" (:id node))
-               drop-watch-key         (str "tile-drop-" (:id node))
+  (r/with-let [drag-over             (r/atom false)
+               closest-edge          (r/atom nil)
+               dragging              (r/atom false)
+               color-picker-open?    (r/atom false)
+               color-picker-rect     (r/atom nil)
+               split-ref             (atom on-split)
+               close-ref             (atom on-close)
+               active-entity-chg-ref (atom on-active-entity-change)
+               color-change-ref      (atom on-entity-color-change)
+               tile-ref              (atom nil)
+               touch-watch-key       (str "tile-" (:id node))
+               drop-watch-key        (str "tile-drop-" (:id node))
                _ (add-watch touch-drag/hover-target touch-watch-key
                    (make-hover-watch-fn node drag-over closest-edge))
                _ (add-watch touch-drag/drop-result drop-watch-key
@@ -266,23 +266,23 @@
     (reset! close-ref on-close)
     (reset! active-entity-chg-ref on-active-entity-change)
     (reset! color-change-ref on-entity-color-change)
-    (let [entity        (get entities (keyword (:entity-id node)))
-          tile-color    (or (:color entity) "#6366f1")
+    (let [entity         (get entities (keyword (:entity-id node)))
+          tile-color     (or (:color entity) "#6366f1")
           is-fullscreen? (= @fullscreen-tile (:id node))]
       [:div
-       {:ref           (flip-ref-callback tile-ref is-fullscreen?)
-        :data-tile-id  (:id node)
-        :class         (make-tile-class focused? @drag-over @dragging is-fullscreen?)
-        :style         (cond-> {:flex 1} (:color entity) (assoc "--iris-tile-color" (:color entity)))
+       {:ref            (flip-ref-callback tile-ref is-fullscreen?)
+        :data-tile-id   (:id node)
+        :class          (make-tile-class focused? @drag-over @dragging is-fullscreen?)
+        :style          (cond-> {:flex 1} (:color entity) (assoc "--iris-tile-color" (:color entity)))
         :on-mouse-enter (fn [_]
                           (when (and (not focused?) @active-entity-chg-ref)
                             (@active-entity-chg-ref (:entity-id node))))
-        :on-drag-over  #(handle-drag-over % dragging drag-over closest-edge tile-ref)
-        :on-drag-enter (fn [e] (.preventDefault e))
-        :on-drag-leave (fn [e]
-                         (when-not (.contains (.-currentTarget e) (.-relatedTarget e))
-                           (clear-drop-state! drag-over closest-edge)))
-        :on-drop       #(handle-drop % node tile-ref split-ref drag-over closest-edge)}
+        :on-drag-over   #(handle-drag-over % dragging drag-over closest-edge tile-ref)
+        :on-drag-enter  (fn [e] (.preventDefault e))
+        :on-drag-leave  (fn [e]
+                          (when-not (.contains (.-currentTarget e) (.-relatedTarget e))
+                            (clear-drop-state! drag-over closest-edge)))
+        :on-drop        #(handle-drop % node tile-ref split-ref drag-over closest-edge)}
        [tile-header node (:name entity) tile-color dragging close-ref
         color-picker-open? color-picker-rect color-change-ref tile-ref]
        [:div.iris-entity-tile-content

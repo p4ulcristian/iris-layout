@@ -1,15 +1,17 @@
-(ns iris-layout.components.command-center
+(ns iris-layout.workspace.command-center
   "Command Center overlay — mini workspace previews and entity palette."
   (:require [reagent.core :as r]
             [iris-layout.layout :as layout]
             [iris-layout.util :as util]))
 
 ;; Drag state: {:tile-id "..." :entity-id "..." :source-pos [x y]}
-(def ^:private picked-tile (r/atom nil))
-(def ^:private pending-drag (atom nil))
-(def ^:private drag-threshold 5)
+(def picked-tile (r/atom nil))
+(def pending-drag (atom nil))
+(def drag-threshold 5)
 
-(defn- start-drag-listeners! []
+(defn start-drag-listeners!
+  "Attach temporary mousemove/mouseup listeners to detect a drag gesture in the command center."
+  []
   (let [on-move (atom nil)
         on-up (atom nil)]
     (reset! on-move
@@ -29,7 +31,8 @@
     (.addEventListener js/document "mousemove" @on-move)
     (.addEventListener js/document "mouseup" @on-up)))
 
-(defn- command-center-mini-layout
+(defn command-center-mini-layout
+  "Renders a miniature read-only preview of a layout tree inside the command center."
   [layout-node entities on-close-entity source-pos]
   (case (layout/node-type layout-node)
     :tile
@@ -71,9 +74,13 @@
 
     nil))
 
-(def ^:private hover-delay-ms 400)
+(def hover-delay-ms
+  "Milliseconds to hover over a workspace cell before navigating to it."
+  400)
 
 (defn command-center-overlay
+  "Full-screen overlay showing all workspaces as a mini grid plus an entity palette.
+   Opens on Alt key hold or corner button click."
   [_cols _rows _workspaces _active-position _entities _render-entity-tile
    _on-active-position-change _on-workspaces-change _command-center?]
   (let [hover-timer (atom nil)]

@@ -1,4 +1,4 @@
-(ns iris-layout.components.resizer
+(ns iris-layout.pane.resizer
   (:require [reagent.core :as r]))
 
 (defn resizer

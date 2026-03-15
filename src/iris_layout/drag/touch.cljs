@@ -1,4 +1,4 @@
-(ns iris-layout.components.touch-drag
+(ns iris-layout.drag.touch
   "Touch drag state — shared across all tiles for mobile drag-drop.
 
    On touch devices, HTML5 Drag and Drop doesn't work. This module
@@ -38,7 +38,7 @@
 (defn touch-started? []
   (some? @touch-start))
 
-(defn- create-ghost! [x y]
+(defn create-ghost! [x y]
   (let [ghost (js/document.createElement "div")]
     (set! (.-className ghost) "iris-touch-drag-ghost")
     (set! (.-cssText (.-style ghost))
@@ -67,7 +67,7 @@
   []
   (reset! touch-start nil))
 
-(defn- activate-drag!
+(defn activate-drag!
   "Activate drag — create ghost and set drag state."
   [ts x y]
   (let [ghost (create-ghost! x y)]
@@ -83,13 +83,13 @@
     (when (.-vibrate js/navigator)
       (.vibrate js/navigator 30))))
 
-(defn- find-tile-element
+(defn find-tile-element
   "Find the closest .iris-entity-tile ancestor from the element at point."
   [x y]
   (when-let [el (js/document.elementFromPoint x y)]
     (.closest el ".iris-entity-tile")))
 
-(defn- calculate-half-xy
+(defn calculate-half-xy
   "Determine which half of an element a point is closest to."
   [x y el]
   (let [rect (.getBoundingClientRect el)

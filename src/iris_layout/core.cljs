@@ -3,10 +3,10 @@
   (:require [reagent.core :as r]
             [iris-layout.layout :as layout]
             [iris-layout.util :as util]
-            [iris-layout.components.entity-tile-group :as entity-tile-group]
-            [iris-layout.components.entity-tile :as entity-tile]
-            [iris-layout.components.touch-drag :as touch-drag]
-            [iris-layout.components.command-center :as command-center])
+            [iris-layout.pane.pane :as pane]
+            [iris-layout.pane.tile :as tile]
+            [iris-layout.drag.touch :as touch-drag]
+            [iris-layout.workspace.command-center :as command-center])
   (:require-macros [iris-layout.css :refer [inline-css]]))
 
 (r/set-default-compiler! (r/create-compiler {:function-components true}))
@@ -53,7 +53,7 @@
   [{:keys [layout entities render-entity-tile active-entity
            on-layout-change on-active-entity-change on-entity-color-change on-entity-close]}]
   [:div.iris-body-stage
-   [entity-tile-group/entity-tile-group
+   [pane/pane
     layout
     (partial handle-split layout on-layout-change)
     (partial handle-close layout on-layout-change on-entity-close)
@@ -129,7 +129,7 @@
 (defn- update-workspaces-with-cleanup
   "Update a workspace's layout and remove dragged tile from all other workspaces."
   [workspaces target-pos new-layout]
-  (let [dragged-tile @entity-tile/drag-source-tile]
+  (let [dragged-tile @tile/drag-source-tile]
     (if dragged-tile
       (reduce-kv
         (fn [acc pos ws-data]
@@ -294,7 +294,7 @@
                  on-active-position-change on-workspaces-change logo] :as props}]
       (reset! props-ref props)
       (let [[cols rows] (grid-dimensions workspaces)
-            dragging? (or @entity-tile/drag-source-tile @touch-drag/touch-state)
+            dragging? (or @tile/drag-source-tile @touch-drag/touch-state)
             vis? (fn [dir] (or dragging? (can-navigate? dir workspaces active-position)))]
         [:div.iris-grid-viewport
          (nav-edge-hiccup "iris-nav-left" (vis? :left) #(handle-nav :left) :left props-ref nav-drag-edge)
