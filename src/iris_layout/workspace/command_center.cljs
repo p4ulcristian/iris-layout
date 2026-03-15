@@ -74,18 +74,13 @@
 
     nil))
 
-(def hover-delay-ms
-  "Milliseconds to hover over a workspace cell before navigating to it."
-  400)
-
 (defn command-center-overlay
   "Full-screen overlay showing all workspaces as a mini grid plus an entity palette.
    Opens on Alt key hold or corner button click."
   [_cols _rows _workspaces _active-position _entities _render-entity-tile
    _on-active-position-change _on-workspaces-change _command-center?]
-  (let [hover-timer (atom nil)]
-    (fn [cols rows workspaces active-position entities _render-entity-tile
-         on-active-position-change on-workspaces-change command-center?]
+  (fn [cols rows workspaces active-position entities _render-entity-tile
+       on-active-position-change on-workspaces-change command-center?]
       (let [[ax ay] active-position
             view-cols (+ cols 1)
             view-rows (+ rows 1)
@@ -111,19 +106,6 @@
                  [:div {:class (str "iris-command-center-cell"
                                     (when active?      " iris-command-center-cell-active")
                                     (when drop-target? " iris-command-center-cell-drop-target"))
-                        :on-mouse-enter (when-not active?
-                                          (fn [_]
-                                            (when-not picked
-                                              (when @hover-timer (js/clearTimeout @hover-timer))
-                                              (reset! hover-timer
-                                                (js/setTimeout
-                                                  #(when on-active-position-change
-                                                     (on-active-position-change pos))
-                                                  hover-delay-ms)))))
-                        :on-mouse-leave (fn [_]
-                                          (when @hover-timer
-                                            (js/clearTimeout @hover-timer)
-                                            (reset! hover-timer nil)))
                         :on-mouse-up
                         (fn [e]
                           (.stopPropagation e)
@@ -183,4 +165,4 @@
                   [:div.iris-command-center-palette-icon [icon]]
                   [:div.iris-command-center-palette-dot
                    {:style {:background (or (:color entity) "#6366f1")}}])
-                [:span.iris-command-center-palette-name (:name entity)]]))]]]))))
+                [:span.iris-command-center-palette-name (:name entity)]]))]]])))
