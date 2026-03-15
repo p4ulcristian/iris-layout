@@ -1,7 +1,8 @@
 (ns iris-layout.components.command-center
   "Command Center overlay — mini workspace previews and entity palette."
   (:require [reagent.core :as r]
-            [iris-layout.layout :as layout]))
+            [iris-layout.layout :as layout]
+            [iris-layout.util :as util]))
 
 (defn- pos-key
   [[x y]]
@@ -41,7 +42,7 @@
   "Recursively render a mini layout tree with close buttons on each tile.
    Drag a tile to move it to another workspace."
   [layout-node entities on-close-entity source-ws-key]
-  (case (:type layout-node)
+  (case (layout/node-type layout-node)
     :tile
     (let [entity (get entities (:entity-id layout-node))
           picked? (and @picked-tile
@@ -73,7 +74,7 @@
 
     :split
     (let [[c1 c2] (:children layout-node)
-          horiz? (= (:direction layout-node) :horizontal)
+          horiz? (= (keyword (:direction layout-node)) :horizontal)
           ratio (:ratio layout-node 0.5)]
       [:div.iris-command-center-split
        {:class (if horiz? "horizontal" "vertical")}
@@ -139,9 +140,9 @@
                                                source-ws (get workspaces source-ws-key)
                                                source-layout (layout/remove-tile-from-layout (:layout source-ws) tile-id)
                                                target-ws (get workspaces k)
-                                               new-tile {:type :tile :id (str "iris-" (random-uuid)) :entity-id entity-id}
+                                               new-tile {:type :tile :id (util/generate-id) :entity-id entity-id}
                                                target-layout (if (:layout target-ws)
-                                                               {:type :split :id (str "iris-" (random-uuid))
+                                                               {:type :split :id (util/generate-id)
                                                                 :direction :horizontal :ratio 0.5
                                                                 :children [(:layout target-ws) new-tile]}
                                                                new-tile)
@@ -178,15 +179,15 @@
                    (when on-workspaces-change
                      (let [ak (pos-key active-position)
                            existing (:layout (get workspaces ak))
-                           new-tile {:type :tile :id (str "iris-" (random-uuid)) :entity-id entity-id}
+                           new-tile {:type :tile :id (util/generate-id) :entity-id entity-id}
                            new-layout (if existing
-                                        {:type :split :id (str "iris-" (random-uuid))
+                                        {:type :split :id (util/generate-id)
                                          :direction :horizontal :ratio 0.5
                                          :children [existing new-tile]}
                                         new-tile)]
                        (on-workspaces-change (assoc workspaces ak {:layout new-layout})))))}
                 (if-let [icon (:icon entity)]
-                  [:div.iris-command-center-palette-icon icon]
+                  [:div.iris-command-center-palette-icon [:> icon {}]]
                   [:div.iris-command-center-palette-dot
                    {:style {:background (or (:color entity) "#6366f1")}}])
                 [:span.iris-command-center-palette-name

@@ -16,7 +16,7 @@
 
     :split
     (let [[child1 child2] (:children node)
-          direction (:direction node)
+          direction (keyword (:direction node))
           ratio (:ratio node)]
       [:div.iris-entity-tile-group
        {:class (name direction)}

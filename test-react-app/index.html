@@ -55,7 +55,7 @@
     import { createRoot } from 'react-dom/client'
     import { IrisLayout } from './dist/iris-layout.js'
 
-    const icon = (cls) => h('i', {className: cls})
+    const icon = (cls) => () => h('i', {className: cls})
 
     const ENTITIES = {
       editor: { id: 'editor', name: 'editor.cljs', type: 'code', color: '#6366f1', icon: icon('fa-solid fa-code') },
@@ -70,11 +70,11 @@
         layout: {
           type: 'split', id: 's1', direction: 'horizontal', ratio: 0.6,
           children: [
-            { type: 'tile', id: 't1', entityId: 'editor' },
+            { type: 'tile', id: 't1', 'entity-id':'editor' },
             { type: 'split', id: 's2', direction: 'vertical', ratio: 0.6,
               children: [
-                { type: 'tile', id: 't2', entityId: 'terminal' },
-                { type: 'tile', id: 't3', entityId: 'repl' },
+                { type: 'tile', id: 't2', 'entity-id':'terminal' },
+                { type: 'tile', id: 't3', 'entity-id':'repl' },
               ]
             }
           ]
@@ -84,20 +84,20 @@
         layout: {
           type: 'split', id: 's3', direction: 'horizontal', ratio: 0.5,
           children: [
-            { type: 'tile', id: 't4', entityId: 'editor' },
-            { type: 'tile', id: 't5', entityId: 'browser' },
+            { type: 'tile', id: 't4', 'entity-id':'editor' },
+            { type: 'tile', id: 't5', 'entity-id':'browser' },
           ]
         }
       },
       '0,1': {
-        layout: { type: 'tile', id: 't6', entityId: 'notes' }
+        layout: { type: 'tile', id: 't6', 'entity-id':'notes' }
       },
       '1,1': {
         layout: {
           type: 'split', id: 's4', direction: 'vertical', ratio: 0.5,
           children: [
-            { type: 'tile', id: 't7', entityId: 'terminal' },
-            { type: 'tile', id: 't8', entityId: 'repl' },
+            { type: 'tile', id: 't7', 'entity-id':'terminal' },
+            { type: 'tile', id: 't8', 'entity-id':'repl' },
           ]
         }
       }

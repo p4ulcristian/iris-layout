@@ -6,6 +6,7 @@
    See the `IrisLayout` def for full props documentation."
   (:require [reagent.core :as r]
             [iris-layout.layout :as layout]
+            [iris-layout.util :as util]
             [iris-layout.components.entity-tile-group :as entity-tile-group]
             [iris-layout.components.entity-tile :as entity-tile]
             [iris-layout.components.touch-drag :as touch-drag]
@@ -15,57 +16,16 @@
 ;; JS <-> CLJS boundary conversion
 ;; ============================================================
 
-(defn- generate-id []
-  (str "iris-" (random-uuid)))
-
-(defn js->layout
-  "Convert a JS layout object to a CLJS layout map.
-   Handles recursive conversion of the tree structure.
-   JS keys: type, id, direction, ratio, children, entityId
-   CLJS keys: :type, :id, :direction, :ratio, :children, :entity-id"
-  [js-obj]
-  (when js-obj
-    (let [obj (js->clj js-obj)]
-      (cond-> {:type (keyword (get obj "type"))
-               :id (get obj "id")}
-        (get obj "direction") (assoc :direction (keyword (get obj "direction")))
-        (get obj "ratio")     (assoc :ratio (get obj "ratio"))
-        (get obj "children")  (assoc :children (mapv js->layout (get obj "children")))
-        (or (get obj "entityId")
-            (get obj "entity-id")) (assoc :entity-id (or (get obj "entityId")
-                                                          (get obj "entity-id")))))))
-
-(defn layout->js
-  "Convert a CLJS layout map to a JS object.
-   Inverse of js->layout."
-  [layout]
-  (when layout
-    (clj->js
-      (cond-> {"type" (name (:type layout))
-               "id" (:id layout)}
-        (:direction layout)  (assoc "direction" (name (:direction layout)))
-        (:ratio layout)      (assoc "ratio" (:ratio layout))
-        (:children layout)   (assoc "children" (mapv layout->js (:children layout)))
-        (:entity-id layout)  (assoc "entityId" (:entity-id layout))))))
 
 (defn js->entities
   "Convert a JS entities object to a CLJS map.
    Top-level keys stay as strings (entity IDs), nested keys are keywordized.
-   React elements (icon, etc.) are preserved as-is."
+   Icon values must be React component functions (not elements) to survive conversion."
   [js-obj]
   (when js-obj
-    (let [keys (js/Object.keys js-obj)]
-      (into {}
-            (map (fn [k]
-                   (let [v (unchecked-get js-obj k)]
-                     [k (if (object? v)
-                          (let [vkeys (js/Object.keys v)]
-                            (into {}
-                                  (map (fn [k2]
-                                         [(keyword k2) (unchecked-get v k2)]))
-                                  vkeys))
-                          v)])))
-            keys))))
+    (into {}
+          (map (fn [k] [k (js->clj (unchecked-get js-obj k) :keywordize-keys true)]))
+          (js/Object.keys js-obj))))
 
 
 ;; ============================================================
@@ -134,8 +94,8 @@
                                                layout)
                                            layout)
                              target-after (layout/find-tile base-layout tile-id)
-                             new-tile-id (generate-id)
-                             split-id (generate-id)
+                             new-tile-id (util/generate-id)
+                             split-id (util/generate-id)
                              new-layout (when target-after
                                           (layout/split-tile
                                             base-layout tile-id split-direction
@@ -272,7 +232,7 @@
       (let [data (js/JSON.parse raw)
             entity-id (.-entityId data)]
         (when entity-id
-          (let [new-layout {:type :tile :id (generate-id) :entity-id entity-id}
+          (let [new-layout {:type :tile :id (util/generate-id) :entity-id entity-id}
                 updated (update-workspaces-with-cleanup workspaces k new-layout)]
             (on-workspaces-change updated))))
       (catch :default _ nil))))
@@ -382,11 +342,11 @@
                 {:keys [workspaces active-position on-workspaces-change]} @props-ref
                 active-key (pos-key active-position)]
             (when (and source-entity-id on-workspaces-change)
-              (let [new-tile {:type :tile :id (generate-id) :entity-id source-entity-id}
+              (let [new-tile {:type :tile :id (util/generate-id) :entity-id source-entity-id}
                     existing-layout (:layout (get workspaces active-key))
                     new-layout (if existing-layout
                                  ;; Add alongside existing layout
-                                 {:type :split :id (generate-id)
+                                 {:type :split :id (util/generate-id)
                                   :direction :horizontal :ratio 0.5
                                   :children [existing-layout new-tile]}
                                  new-tile)
@@ -444,20 +404,16 @@
   "Convert a JS workspaces object {\"x,y\": {layout: ...}} to CLJS map."
   [js-obj]
   (when js-obj
-    (let [obj (js->clj js-obj)]
-      (into {}
-            (map (fn [[k v]]
-                   [k {:layout (js->layout (get v "layout"))}]))
-            obj))))
+    (into {}
+          (map (fn [k]
+                 (let [v (unchecked-get js-obj k)]
+                   [k {:layout (js->clj (unchecked-get v "layout") :keywordize-keys true)}])))
+          (js/Object.keys js-obj))))
 
 (defn workspaces->js
   "Convert CLJS workspaces map to JS object."
   [workspaces]
-  (clj->js
-    (into {}
-          (map (fn [[k v]]
-                 [k {"layout" (layout->js (:layout v))}]))
-          workspaces)))
+  (clj->js workspaces))
 
 (defn- grid-wrapper
   "Wrapper that converts JS props to CLJS for grid-component."
@@ -497,7 +453,7 @@
      workspaces              - Object keyed by 'x,y' position strings.
                                Each value: { layout: LayoutNode }
                                LayoutNode is either:
-                                 { type: 'tile',  id, entityId }
+                                 { type: 'tile',  id, 'entity-id' }
                                  { type: 'split', id, direction: 'horizontal'|'vertical',
                                    ratio: 0-1, children: [LayoutNode, LayoutNode] }
 
