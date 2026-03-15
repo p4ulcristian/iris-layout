@@ -19,57 +19,38 @@
 ;; Body stage — single workspace layout renderer
 ;; ============================================================
 
+(defn- handle-split [layout on-layout-change tile-id entity-id split-direction source-type half & [source-tile-id]]
+  (let [before? (or (= half :left) (= half :top))
+        base-layout (if (= source-type :tile)
+                      (or (layout/remove-tile-from-layout layout source-tile-id) layout)
+                      layout)
+        target-after (layout/find-tile base-layout tile-id)
+        new-layout (when target-after
+                     (layout/split-tile base-layout tile-id split-direction
+                                        entity-id (util/generate-id) (util/generate-id) before?))]
+    (when (and new-layout on-layout-change)
+      (on-layout-change new-layout))))
+
+(defn- handle-close [layout on-layout-change on-entity-close tile-id]
+  (let [tile (layout/find-tile layout tile-id)
+        new-layout (layout/remove-tile-from-layout layout tile-id)]
+    (when on-layout-change (on-layout-change new-layout))
+    (when on-entity-close (on-entity-close (:entity-id tile)))))
+
+(defn- handle-ratio [layout on-layout-change split-id new-ratio]
+  (when on-layout-change
+    (on-layout-change (layout/update-split-ratio layout split-id new-ratio))))
+
 (defn- body-stage-component
-  "A single layout stage within the Body.
-
-   Manages drag-drop split operations:
-   - Sidebar drags: adds entity to layout via split
-   - Tile rearranges: removes entity from source, splits at target
-
-   Props:
-   :layout             - layout tree (CLJS map)
-   :entities           - entity data map
-   :render-entity-tile - React component for tile content
-   :active-entity      - focused entity ID
-   :on-layout-change   - fn(new-layout) for layout mutations
-   :on-active-entity-change - fn(entity-id) for focus changes
-   :on-entity-color-change  - fn(entity-id, color) for tile color changes"
-  [_]
-  (let [props-ref (atom nil)
-        handle-split (fn [tile-id entity-id split-direction source-type half & [source-tile-id]]
-                       (let [{:keys [layout on-layout-change]} @props-ref
-                             before? (or (= half :left) (= half :top))
-                             base-layout (if (= source-type :tile)
-                                           (or (layout/remove-tile-from-layout layout source-tile-id)
-                                               layout)
-                                           layout)
-                             target-after (layout/find-tile base-layout tile-id)
-                             new-tile-id (util/generate-id)
-                             split-id (util/generate-id)
-                             new-layout (when target-after
-                                          (layout/split-tile
-                                            base-layout tile-id split-direction
-                                            entity-id new-tile-id split-id before?))]
-                         (when (and new-layout on-layout-change)
-                           (on-layout-change new-layout))))
-        handle-close (fn [tile-id]
-                       (let [{:keys [layout on-layout-change on-entity-close]} @props-ref
-                             tile (layout/find-tile layout tile-id)
-                             new-layout (layout/remove-tile-from-layout layout tile-id)]
-                         (when on-layout-change
-                           (on-layout-change new-layout))
-                         (when on-entity-close
-                           (on-entity-close (:entity-id tile)))))
-        handle-ratio (fn [split-id new-ratio]
-                       (let [{:keys [layout on-layout-change]} @props-ref
-                             new-layout (layout/update-split-ratio layout split-id new-ratio)]
-                         (when on-layout-change
-                           (on-layout-change new-layout))))]
-    (fn [{:keys [layout entities render-entity-tile active-entity on-layout-change on-active-entity-change on-entity-color-change] :as props}]
-      (reset! props-ref props)
-      [:div.iris-body-stage
-       [entity-tile-group/entity-tile-group
-        layout handle-split handle-close handle-ratio active-entity entities render-entity-tile on-active-entity-change on-entity-color-change]])))
+  [{:keys [layout entities render-entity-tile active-entity
+           on-layout-change on-active-entity-change on-entity-color-change on-entity-close]}]
+  [:div.iris-body-stage
+   [entity-tile-group/entity-tile-group
+    layout
+    (partial handle-split layout on-layout-change)
+    (partial handle-close layout on-layout-change on-entity-close)
+    (partial handle-ratio layout on-layout-change)
+    active-entity entities render-entity-tile on-active-entity-change on-entity-color-change]])
 
 
 ;; ============================================================
