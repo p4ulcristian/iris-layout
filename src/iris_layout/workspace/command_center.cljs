@@ -146,25 +146,30 @@
            [grid-cell pos (get workspaces pos) workspaces [ax ay] entities picked
             on-workspaces-change on-active-position-change command-center?])))]))
 
+(defn palette-item-on-click
+  "Handle clicking an entity in the palette — add it to the active workspace."
+  [entity-id active-pos workspaces on-workspaces-change]
+  (fn [e]
+    (.stopPropagation e)
+    (when on-workspaces-change
+      (let [active-ws  (get workspaces active-pos)
+            existing   (:layout active-ws)
+            new-tile   {:type :tile :id (util/generate-id) :entity-id (name entity-id)}
+            new-layout (if existing
+                         {:type :split :id (util/generate-id)
+                          :direction "horizontal" :ratio 0.5
+                          :children [existing new-tile]}
+                         new-tile)]
+        (on-workspaces-change
+          (assoc workspaces active-pos (assoc active-ws :layout new-layout)))))))
+
 (defn palette-item
   "Render a single entity in the command center palette."
   [entity-id entity active-pos workspaces on-workspaces-change]
   ^{:key entity-id}
   [:div.iris-command-center-palette-item
    {:style {"--iris-tile-color" (or (:color entity) "#6366f1")}
-    :on-click (fn [e]
-                (.stopPropagation e)
-                (when on-workspaces-change
-                  (let [active-ws  (get workspaces active-pos)
-                        existing   (:layout active-ws)
-                        new-tile   {:type :tile :id (util/generate-id) :entity-id (name entity-id)}
-                        new-layout (if existing
-                                     {:type :split :id (util/generate-id)
-                                      :direction "horizontal" :ratio 0.5
-                                      :children [existing new-tile]}
-                                     new-tile)]
-                    (on-workspaces-change
-                      (assoc workspaces active-pos (assoc active-ws :layout new-layout))))))}
+    :on-click (palette-item-on-click entity-id active-pos workspaces on-workspaces-change)}
    (if-let [icon (:icon entity)]
      [:div.iris-command-center-palette-icon [icon]]
      [:div.iris-command-center-palette-dot
