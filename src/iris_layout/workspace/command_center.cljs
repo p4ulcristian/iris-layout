@@ -107,6 +107,24 @@
         (on-active-position-change pos))
       (reset! command-center? false))))
 
+(defn cell-on-close-tile
+  "Handle closing a tile from the mini layout preview."
+  [pos workspace workspaces on-workspaces-change]
+  (fn [tile-id]
+    (when on-workspaces-change
+      (let [new-layout (layout/remove-tile-from-layout (:layout workspace) tile-id)]
+        (on-workspaces-change
+          (if new-layout
+            (assoc workspaces pos (assoc workspace :layout new-layout))
+            (dissoc workspaces pos)))))))
+
+(defn grid-cell-class
+  "Build CSS class string for a workspace cell."
+  [active? drop-target?]
+  (str "iris-command-center-cell"
+       (when active?      " iris-command-center-cell-active")
+       (when drop-target? " iris-command-center-cell-drop-target")))
+
 (defn grid-cell
   "Render a single workspace cell in the command center grid."
   [pos workspace workspaces active-pos entities picked on-workspaces-change on-active-position-change command-center?]
@@ -114,20 +132,12 @@
         has-layout?  (some? (:layout workspace))
         drop-target? (and picked (not= (:source-pos picked) pos))]
     ^{:key (str (first pos) "," (second pos))}
-    [:div {:class (str "iris-command-center-cell"
-                       (when active?      " iris-command-center-cell-active")
-                       (when drop-target? " iris-command-center-cell-drop-target"))
+    [:div {:class (grid-cell-class active? drop-target?)
            :on-mouse-up (cell-on-mouse-up picked workspaces pos on-workspaces-change)
            :on-click    (cell-on-click picked pos on-active-position-change command-center?)}
      (when has-layout?
        [command-center-mini-layout (:layout workspace) entities
-        (fn [tile-id]
-          (when on-workspaces-change
-            (let [new-layout (layout/remove-tile-from-layout (:layout workspace) tile-id)]
-              (on-workspaces-change
-                (if new-layout
-                  (assoc workspaces pos (assoc workspace :layout new-layout))
-                  (dissoc workspaces pos))))))
+        (cell-on-close-tile pos workspace workspaces on-workspaces-change)
         pos])]))
 
 (defn workspace-grid
