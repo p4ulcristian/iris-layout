@@ -213,9 +213,179 @@
 .iris-grid-cell-active {
 }
 
-.iris-grid-zoomed .iris-grid-cell-active {
+/* --- Command Center overlay --- */
+
+.iris-command-center {
+  position: absolute;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.iris-command-center-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+}
+
+.iris-command-center-grid {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  height: 50vh;
+  max-height: 400px;
+}
+
+.iris-command-center-cell {
+  position: relative;
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  background: rgba(15, 20, 35, 0.8);
+  transition: border-color 200ms ease, box-shadow 200ms ease;
+  display: flex;
+  padding: 3px;
+  gap: 2px;
+}
+
+.iris-command-center-cell:hover {
+  border-color: rgba(255, 255, 255, 0.3);
+  box-shadow: 0 0 16px rgba(99, 102, 241, 0.3);
+}
+
+.iris-command-center-cell-active {
   border-color: rgba(234, 179, 8, 0.6);
-  box-shadow: 0 0 24px rgba(234, 179, 8, 0.4), inset 0 0 12px rgba(234, 179, 8, 0.1);
+  box-shadow: 0 0 24px rgba(234, 179, 8, 0.4);
+}
+
+.iris-command-center-split {
+  display: flex;
+  flex: 1;
+  gap: 2px;
+  min-height: 0;
+  min-width: 0;
+}
+
+.iris-command-center-split.horizontal {
+  flex-direction: row;
+}
+
+.iris-command-center-split.vertical {
+  flex-direction: column;
+}
+
+.iris-command-center-split > div {
+  display: flex;
+  min-height: 0;
+  min-width: 0;
+}
+
+.iris-command-center-tile {
+  --_color: var(--iris-tile-color, #6366f1);
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--_color) 20%, rgba(15, 20, 35, 0.8));
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.iris-command-center-tile-name {
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.5);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0 4px;
+}
+
+.iris-command-center-tile-close {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border: none;
+  background: transparent;
+  color: transparent;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: color 150ms ease, background 150ms ease;
+}
+
+.iris-command-center-tile-close:hover {
+  background: rgba(239, 68, 68, 0.4);
+  color: #fff;
+}
+
+/* Command Center layout wrapper */
+.iris-command-center-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: 50%;
+  max-width: 600px;
+}
+
+/* Entity palette */
+.iris-command-center-palette {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.iris-command-center-palette-item {
+  --_color: var(--iris-tile-color, #6366f1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 72px;
+  height: 72px;
+  background: color-mix(in srgb, var(--_color) 15%, rgba(15, 20, 35, 0.85));
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: border-color 200ms ease, background 200ms ease, box-shadow 200ms ease, transform 150ms ease;
+}
+
+.iris-command-center-palette-item:hover {
+  border-color: color-mix(in srgb, var(--_color) 60%, white);
+  background: color-mix(in srgb, var(--_color) 25%, rgba(15, 20, 35, 0.9));
+  box-shadow: 0 0 16px color-mix(in srgb, var(--_color) 40%, transparent);
+  transform: scale(1.05);
+}
+
+.iris-command-center-palette-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.iris-command-center-palette-name {
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.6);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 60px;
+  text-align: center;
 }
 
 /* Slide animations — directional based on navigation */

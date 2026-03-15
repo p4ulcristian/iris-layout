@@ -20,7 +20,7 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       height: 100dvh;
-      background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 50%, #16213e 100%);
+      background: #1a1a2e;
       color: #fff;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       overflow: hidden;
@@ -30,134 +30,24 @@
       flex-direction: column;
       height: 100dvh;
     }
-.main-area {
+    .main-area {
       flex: 1;
       display: flex;
       min-height: 0;
       overflow: hidden;
     }
-
-    /* Entity tile renderers */
-    .entity-panel {
-      display: flex;
-      flex-direction: column;
-      height: 100%;
-      width: 100%;
-    }
-    .entity-header {
-      padding: 10px 16px;
+    .entity-tile {
       display: flex;
       align-items: center;
-      gap: 8px;
-      font-size: 13px;
-      font-weight: 500;
-      border-bottom: 1px solid rgba(255,255,255,0.06);
-      color: rgba(255,255,255,0.8);
-    }
-    .entity-header .dot {
-      width: 6px; height: 6px;
-      border-radius: 50%;
-    }
-    .entity-body {
-      flex: 1;
-      padding: 16px;
-      font-size: 13px;
-      color: rgba(255,255,255,0.5);
-      overflow: auto;
-    }
-    .code-line {
-      font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
-      font-size: 12px;
-      line-height: 1.7;
-      color: rgba(255,255,255,0.4);
-    }
-    .code-line .keyword { color: #c792ea; }
-    .code-line .string { color: #c3e88d; }
-    .code-line .comment { color: rgba(255,255,255,0.2); font-style: italic; }
-    .code-line .fn { color: #82aaff; }
-    .code-line .number { color: #f78c6c; }
-    .terminal-body {
-      font-family: 'SF Mono', 'Fira Code', monospace;
-      font-size: 12px;
-      line-height: 1.8;
-      background: rgba(0,0,0,0.3);
-      border-radius: 6px;
-      padding: 12px;
+      justify-content: center;
       height: 100%;
+      width: 100%;
+      font-size: 14px;
+      color: rgba(255,255,255,0.7);
     }
-    .terminal-body .prompt { color: #82aaff; }
-    .terminal-body .output { color: rgba(255,255,255,0.5); }
-    .terminal-body .success { color: #c3e88d; }
-
-    /* Animated background blobs */
-    .bg-blobs {
-      position: fixed;
-      inset: 0;
-      z-index: 0;
-      overflow: hidden;
-      pointer-events: none;
-    }
-    .bg-blobs .blob {
-      position: absolute;
-      border-radius: 50%;
-      filter: blur(80px);
-      opacity: 0.4;
-      will-change: transform;
-    }
-    .blob-1 {
-      width: 500px; height: 500px;
-      background: #a5b4fc;
-      top: 5%; left: 10%;
-      animation: blob-float-1 20s ease-in-out infinite;
-    }
-    .blob-2 {
-      width: 450px; height: 450px;
-      background: #f9a8d4;
-      top: 45%; right: 5%;
-      animation: blob-float-2 25s ease-in-out infinite;
-    }
-    .blob-3 {
-      width: 400px; height: 400px;
-      background: #6ee7b7;
-      bottom: 5%; left: 35%;
-      animation: blob-float-3 22s ease-in-out infinite;
-    }
-    .blob-4 {
-      width: 350px; height: 350px;
-      background: #fcd34d;
-      top: 25%; left: 55%;
-      animation: blob-float-4 18s ease-in-out infinite;
-    }
-    @keyframes blob-float-1 {
-      0%, 100% { transform: translate(0, 0) scale(1); }
-      33%      { transform: translate(80px, -60px) scale(1.1); }
-      66%      { transform: translate(-40px, 40px) scale(0.9); }
-    }
-    @keyframes blob-float-2 {
-      0%, 100% { transform: translate(0, 0) scale(1); }
-      33%      { transform: translate(-70px, 50px) scale(1.15); }
-      66%      { transform: translate(50px, -30px) scale(0.85); }
-    }
-    @keyframes blob-float-3 {
-      0%, 100% { transform: translate(0, 0) scale(1); }
-      33%      { transform: translate(60px, -80px) scale(1.05); }
-      66%      { transform: translate(-50px, 20px) scale(0.95); }
-    }
-    @keyframes blob-float-4 {
-      0%, 100% { transform: translate(0, 0) scale(1); }
-      33%      { transform: translate(-40px, 70px) scale(1.1); }
-      66%      { transform: translate(60px, -50px) scale(0.9); }
-    }
-    .app { position: relative; z-index: 1; }
   </style>
 </head>
 <body>
-  <div class="bg-blobs">
-    <div class="blob blob-1"></div>
-    <div class="blob blob-2"></div>
-    <div class="blob blob-3"></div>
-    <div class="blob blob-4"></div>
-  </div>
   <div id="root"></div>
   <script type="module">
     import React, { useState, createElement as h } from 'react'
@@ -210,81 +100,16 @@
       }
     }
 
-    // --- Entity tile renderers (full content, for Body) ---
-    function CodeRenderer() {
-      const lines = [
-        h('span', {className:'comment'}, ';; iris-layout core'),
-        h('span', null, '(', h('span',{className:'keyword'},'ns'), ' iris-layout.core'),
-        h('span', null, '  (:require [reagent.core :as r]))'),
-        '',
-        h('span', null, '(', h('span',{className:'keyword'},'defn'), ' ', h('span',{className:'fn'},'body-component')),
-        h('span', null, '  ', h('span',{className:'string'},'"Layout surface with stage stack."')),
-        h('span', null, '  [{:keys [stages entities render-entity-tile]}]'),
-        h('span', null, '  (', h('span',{className:'keyword'},'let'), ' [handle-ratio (', h('span',{className:'keyword'},'fn'), ' [id ratio]'),
-        h('span', null, '          (on-layout-change'),
-        h('span', null, '            (update-split-ratio layout id ratio)))]'),
-        h('span', null, '    [:div.iris-body'),
-        h('span', null, '      [entity-tile-group layout handle-ratio]]))')
-      ]
-      return lines.map((l, i) =>
-        h('div', {className:'code-line', key:i}, l || '\u00a0')
-      )
-    }
-
-    function TerminalRenderer() {
-      const lines = [
-        h('span', null, h('span',{className:'prompt'},'$ '), 'shadow-cljs release lib'),
-        h('span', {className:'output'}, '[:lib] Compiling ...'),
-        h('span', {className:'success'}, '[:lib] Build completed. (62 files, 0 warnings)'),
-        h('span', null, h('span',{className:'prompt'},'$ '), 'npm publish --access public'),
-        h('span', {className:'output'}, '+ @p4ulcristian/iris-layout@0.1.0'),
-        h('span', {className:'success'}, 'published to npm'),
-        h('span', null, h('span',{className:'prompt'},'$ '), h('span',{style:{opacity:0.4}},'_')),
-      ]
-      return h('div', {className:'terminal-body'},
-        lines.map((l, i) => h('div', {key:i}, l))
-      )
-    }
-
     function EntityTile(props) {
       const entity = ENTITIES[props.id] || props
-      const renderers = {
-        code: CodeRenderer,
-        terminal: TerminalRenderer,
-        repl: () => h('div', {className:'terminal-body'},
-          h('div', null, h('span',{className:'prompt'},'user=> '), '(+ 1 2)'),
-          h('div', {style:{color:'#c3e88d'}}, '3'),
-          h('div', null, h('span',{className:'prompt'},'user=> '), '(range 5)'),
-          h('div', {style:{color:'#c3e88d'}}, '(0 1 2 3 4)'),
-          h('div', null, h('span',{className:'prompt'},'user=> '), h('span',{style:{opacity:0.4}},'_')),
-        ),
-        browser: () => h('div', {style:{
-          display:'flex', alignItems:'center', justifyContent:'center',
-          height:'100%', color:'rgba(255,255,255,0.3)', fontSize:14
-        }}, 'localhost:3000'),
-        notes: () => h('div', {style:{
-          lineHeight:1.8, fontSize:13, color:'rgba(255,255,255,0.5)'
-        }},
-          h('div', null, 'TODO:'),
-          h('div', null, '- [x] Set up ESM build target'),
-          h('div', null, '- [x] Export Sidebar & Body components'),
-          h('div', null, '- [x] Test with React 19'),
-          h('div', null, '- [ ] Publish to npm'),
-          h('div', null, '- [ ] Add animations'),
-        ),
-      }
-
-      const body = renderers[entity.type] || (() => h('span', null, entity.name))
-
-      return h('div', {className:'entity-panel'},
-        h('div', {className:'entity-body'}, h(body))
-      )
+      return h('div', {className:'entity-tile'}, entity.name)
     }
 
     function App() {
       const [workspaces, setWorkspaces] = useState(INITIAL_WORKSPACES)
       const [activePosition, setActivePosition] = useState([0, 0])
       const [activeEntity, setActiveEntity] = useState(null)
+      const [entities, setEntities] = useState(ENTITIES)
 
       return h('div', {className:'app'},
         h('div', {className:'main-area'},
@@ -292,11 +117,14 @@
             workspaces,
             activePosition,
             activeEntity,
-            entities: ENTITIES,
+            entities,
             renderEntityTile: EntityTile,
             onWorkspacesChange: setWorkspaces,
             onActivePositionChange: setActivePosition,
             onActiveEntityChange: setActiveEntity,
+            onEntityColorChange: (entityId, color) => {
+              setEntities(prev => ({...prev, [entityId]: {...prev[entityId], color}}))
+            },
           })
         )
       )

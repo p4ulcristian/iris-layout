@@ -276,22 +276,13 @@
 
 (defn- grid-cell
   "Render a single grid cell (workspace or empty placeholder)."
-  [k workspace active? zoomed? props]
+  [k workspace active? props]
   (let [{:keys [entities render-entity-tile active-entity
-                on-workspaces-change on-active-position-change on-entity-close
-                on-active-entity-change on-entity-color-change workspaces]} props
-        [x y] (mapv js/parseInt (.split k ","))]
+                on-workspaces-change on-entity-close
+                on-active-entity-change on-entity-color-change workspaces]} props]
     [:div {:class (str "iris-grid-cell"
                        (when active? " iris-grid-cell-active"))
-           :data-position k
-           :on-mouse-enter (when (and zoomed? (not active?))
-                             (fn [_]
-                               (when on-active-position-change
-                                 (on-active-position-change [x y]))))
-           :on-click (when (and zoomed? (not active?))
-                       (fn [_]
-                         (when on-active-position-change
-                           (on-active-position-change [x y]))))}
+           :data-position k}
      (if (:layout workspace)
        [body-stage-component
         {:layout (:layout workspace)
@@ -314,54 +305,133 @@
 
 (defn- grid-canvas
   "Render the CSS grid canvas with all workspace cells."
-  [cols rows workspaces active-position zoomed? props]
+  [cols rows workspaces active-position props]
   (let [active-key (pos-key active-position)]
     (for [y (range rows)]
       (for [x (range cols)]
         (let [k (pos-key [x y])
               workspace (get workspaces k)]
           ^{:key k}
-          [grid-cell k workspace (= k active-key) zoomed? props])))))
+          [grid-cell k workspace (= k active-key) props])))))
 
 (def ^:private grid-gap 16)
 
 (defn- camera-style
   "Compute the CSS transform style for the grid canvas camera.
    Uses calc() to account for the gap between grid cells."
-  [cols rows active-position zoomed?]
+  [cols rows active-position]
   (let [[ax ay] active-position
-        scale (if zoomed? (/ 1 (max cols rows)) 1)
-        ;; Each cell is (100% - (n-1)*gap) / n wide, plus gap between cells.
-        ;; Offset for position p = p * (100% / n)  but we also shift by p * gap / n
-        ;; to center each cell. Simplest: calc(-ax * (100% + gap) / cols)
-        tx (if zoomed?
-             "0px"
-             (str "calc(" ax " * ((-100% - " grid-gap "px) / " cols "))"))
-        ty (if zoomed?
-             "0px"
-             (str "calc(" ay " * ((-100% - " grid-gap "px) / " rows "))"))]
+        tx (str "calc(" ax " * ((-100% - " grid-gap "px) / " cols "))")
+        ty (str "calc(" ay " * ((-100% - " grid-gap "px) / " rows "))")]
     {:width  (str "calc(" cols " * 100% + " (* (dec cols) grid-gap) "px)")
      :height (str "calc(" rows " * 100% + " (* (dec rows) grid-gap) "px)")
      :grid-template-columns (str "repeat(" cols ", 1fr)")
      :grid-template-rows    (str "repeat(" rows ", 1fr)")
-     :transform (str "translate(" tx ", " ty ") scale(" scale ")")
+     :transform (str "translate(" tx ", " ty ")")
      :transform-origin "0 0"}))
+
+(defn- command-center-mini-layout
+  "Recursively render a mini layout tree with close buttons on each tile."
+  [layout-node entities on-close-entity]
+  (case (:type layout-node)
+    :tile
+    (let [entity (get entities (:entity-id layout-node))]
+      [:div.iris-command-center-tile
+       {:style (when (:color entity)
+                 {"--iris-tile-color" (:color entity)})}
+       [:span.iris-command-center-tile-name
+        (or (:name entity) (:entity-id layout-node))]
+       [:button.iris-command-center-tile-close
+        {:on-click (fn [e]
+                     (.stopPropagation e)
+                     (on-close-entity (:entity-id layout-node)))}
+        "\u00d7"]])
+
+    :split
+    (let [[c1 c2] (:children layout-node)
+          horiz? (= (:direction layout-node) :horizontal)
+          ratio (:ratio layout-node 0.5)]
+      [:div.iris-command-center-split
+       {:class (if horiz? "horizontal" "vertical")}
+       [:div {:style {:flex (str ratio)}} [command-center-mini-layout c1 entities on-close-entity]]
+       [:div {:style {:flex (str (- 1 ratio))}} [command-center-mini-layout c2 entities on-close-entity]]])
+
+    nil))
+
+(defn- command-center-overlay
+  "Overlay showing mini previews of all workspaces and entity palette.
+   Appears when Alt is held. Hover entity + release Alt to add it."
+  [cols rows workspaces active-position entities render-entity-tile
+   on-active-position-change on-workspaces-change command-center?]
+  (let [active-key (pos-key active-position)]
+    [:div.iris-command-center
+     [:div.iris-command-center-backdrop
+      {:on-click (fn [_] (reset! command-center? false))}]
+     [:div.iris-command-center-content
+      [:div.iris-command-center-grid
+       {:style {:grid-template-columns (str "repeat(" cols ", 1fr)")
+                :grid-template-rows (str "repeat(" rows ", 1fr)")}}
+       (doall
+         (for [y (range rows)
+               x (range cols)]
+           (let [k (pos-key [x y])
+                 workspace (get workspaces k)
+                 active? (= k active-key)
+                 has-layout? (some? (:layout workspace))]
+             ^{:key k}
+             [:div {:class (str "iris-command-center-cell"
+                                (when active? " iris-command-center-cell-active"))
+                    :on-mouse-enter (when (not active?)
+                                     (fn [_]
+                                       (when on-active-position-change
+                                         (on-active-position-change [x y]))))
+                    :on-click (fn [_]
+                                (reset! command-center? false))}
+              (when has-layout?
+                [command-center-mini-layout (:layout workspace) entities
+                 (fn [entity-id]
+                   (when on-workspaces-change
+                     (let [new-layout (layout/remove-entity-from-layout (:layout workspace) entity-id)]
+                       (on-workspaces-change
+                         (assoc workspaces k {:layout new-layout})))))])])))]
+      [:div.iris-command-center-palette
+       (doall
+         (for [[entity-id entity] entities]
+           ^{:key entity-id}
+           [:div.iris-command-center-palette-item
+            {:style {"--iris-tile-color" (or (:color entity) "#6366f1")}
+             :on-click (fn [e]
+                         (.stopPropagation e)
+                         (when on-workspaces-change
+                           (let [active-key (pos-key active-position)
+                                 existing-layout (:layout (get workspaces active-key))
+                                 new-tile {:type :tile :id (str "iris-" (random-uuid)) :entity-id entity-id}
+                                 new-layout (if existing-layout
+                                              {:type :split :id (str "iris-" (random-uuid))
+                                               :direction :horizontal :ratio 0.5
+                                               :children [existing-layout new-tile]}
+                                              new-tile)]
+                             (on-workspaces-change (assoc workspaces active-key {:layout new-layout})))))}
+            [:div.iris-command-center-palette-dot
+             {:style {:background (or (:color entity) "#6366f1")}}]
+            [:span.iris-command-center-palette-name
+             (or (:name entity) entity-id)]]))]]]))
 
 (defn grid-component
   "Grid — a 2D grid of workspaces with camera-based navigation.
 
    Workspaces are laid out in a real CSS grid. Navigation moves a camera
-   (CSS translate) to show the active workspace. Holding Alt zooms out
-   to show all workspaces at once."
+   (CSS translate) to show the active workspace. Hold Alt to open the
+   Command Center overlay."
   [_]
-  (let [zoomed-out? (r/atom false)
+  (let [command-center? (r/atom false)
         props-ref (atom nil)
         nav-drag-edge (r/atom nil)
         touch-nav-happened? (atom false)
         handle-nav (fn [dir] (handle-grid-nav dir props-ref))
         keydown-handler (fn [e]
                           (when (and (= (.-key e) "Alt") (not (.-repeat e)))
-                            (reset! zoomed-out? true))
+                            (reset! command-center? true))
                           (when (.-altKey e)
                             (let [dir (case (.-key e)
                                         "ArrowLeft"  :left
@@ -371,12 +441,11 @@
                                         nil)]
                               (when dir
                                 (.preventDefault e)
-                                ;; Exit zoom-out first, then navigate (so slide is visible)
-                                (reset! zoomed-out? false)
+                                (reset! command-center? false)
                                 (handle-nav dir)))))
         keyup-handler (fn [e]
                         (when (= (.-key e) "Alt")
-                          (reset! zoomed-out? false)))]
+                          (reset! command-center? false)))]
     (.addEventListener js/document "keydown" keydown-handler)
     (.addEventListener js/document "keyup" keyup-handler)
     ;; Watch touch-drag nav-edge-target for highlight + navigation
@@ -416,22 +485,25 @@
                 (on-workspaces-change updated))))
           (reset! touch-drag/drop-result nil))
         (reset! touch-nav-happened? false)))
-    (fn [{:keys [workspaces active-position] :as props}]
+    (fn [{:keys [workspaces active-position entities render-entity-tile
+                 on-active-position-change on-workspaces-change] :as props}]
       (reset! props-ref props)
       (let [[cols rows] (grid-dimensions workspaces)
-            zoomed? @zoomed-out?
             dragging? (or @entity-tile/drag-source-tile @touch-drag/touch-state)
             vis? (fn [dir] (or dragging? (can-navigate? dir workspaces active-position)))]
-        [:div {:class (str "iris-grid-viewport"
-                          (when zoomed? " iris-grid-zoomed"))}
+        [:div.iris-grid-viewport
          (nav-edge-hiccup "iris-nav-left" (vis? :left) #(handle-nav :left) :left props-ref nav-drag-edge)
          (nav-edge-hiccup "iris-nav-right" (vis? :right) #(handle-nav :right) :right props-ref nav-drag-edge)
          (nav-edge-hiccup "iris-nav-top" (vis? :up) #(handle-nav :up) :up props-ref nav-drag-edge)
          (nav-edge-hiccup "iris-nav-bottom" (vis? :down) #(handle-nav :down) :down props-ref nav-drag-edge)
          [:div.iris-grid-center
           [:div.iris-grid-canvas
-           {:style (camera-style cols rows active-position zoomed?)}
-           (grid-canvas cols rows workspaces active-position zoomed? props)]]]))))
+           {:style (camera-style cols rows active-position)}
+           (grid-canvas cols rows workspaces active-position props)]]
+         (when @command-center?
+           [command-center-overlay cols rows workspaces active-position
+            entities render-entity-tile on-active-position-change
+            on-workspaces-change command-center?])]))))
 
 ;; ============================================================
 ;; JS <-> CLJS: Grid conversions
@@ -486,7 +558,7 @@
 
    Renders an infinite grid of workspaces navigated by arrow clicks or
    Alt+Arrow keys. Each workspace contains a resizable, drag-and-drop
-   tile layout. Hold Alt to zoom out and see the full grid overview.
+   tile layout. Hold Alt to open the Command Center overlay.
 
    Props (camelCase JS object):
 
