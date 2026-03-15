@@ -10,10 +10,4 @@
    :output-dir "public/js"
    :asset-path "/js"
    :modules {:main {:init-fn iris-demo.core/init!}}
-   :devtools {:after-load iris-demo.core/reload!}}
-
-  :lib
-  {:target :esm
-   :output-dir "dist"
-   :modules {:iris-layout {:exports {IrisLayout iris-layout.core/IrisLayout}}}
-   :js-options {:js-provider :import}}}}
+   :devtools {:after-load iris-demo.core/reload!}}}}
