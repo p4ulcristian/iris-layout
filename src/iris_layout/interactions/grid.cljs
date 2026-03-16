@@ -37,10 +37,9 @@
 
 (defn navigate-to-workspace
   "Navigate to a workspace cell on click — used by the command center mini grid."
-  [pos on-active-position-change command-center?]
+  [pos on-active-position-change]
   (when on-active-position-change
-    (on-active-position-change pos))
-  (reset! command-center? false))
+    (on-active-position-change pos)))
 
 (defn handle-empty-workspace-drop
   "Drop a tile onto an empty workspace cell."

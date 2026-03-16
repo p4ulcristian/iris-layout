@@ -2,7 +2,7 @@
   "iris-layout — a 2D tiling workspace grid for Reagent."
   (:require [reagent.core :as r]
             [clojure.string :as str]
-            ["@dnd-kit/core" :refer [DndContext useDroppable]]
+            ["@dnd-kit/core" :refer [DndContext DragOverlay useDroppable]]
             [iris-layout.layout :as layout]
             [iris-layout.util :as util]
             [iris-layout.pane.pane :as pane]
@@ -14,6 +14,7 @@
 (r/set-default-compiler! (r/create-compiler {:function-components true}))
 
 (def dnd-context-component (r/adapt-react-class DndContext))
+(def drag-overlay-component (r/adapt-react-class DragOverlay))
 
 
 ;; ============================================================
@@ -53,18 +54,6 @@
      {:ref   set-ref
       :style (when is-over {:background "rgba(59,130,246,0.1)"})}]))
 
-(defn nav-edge-fc
-  "Droppable navigation edge — hovering a dragged tile triggers workspace navigation."
-  [{:keys [css-class visible? on-click direction]}]
-  (let [result  (useDroppable #js {:id (str "nav:" (name direction))})
-        set-ref (.-setNodeRef result)
-        is-over (.-isOver result)]
-    [:div {:ref   set-ref
-           :class (str "iris-nav-edge " css-class
-                       (when-not visible? " iris-nav-hidden")
-                       (when is-over " iris-nav-drag-over"))
-           :on-click on-click}
-     [:div.iris-nav-semicircle]]))
 
 (defn grid-cell
   [workspace x y active? props]
@@ -118,8 +107,30 @@
 ;; Drag handlers
 ;; ============================================================
 
-(defn handle-drag-start [event]
-  (reset! tile/dragging-tile (.. event -active -id)))
+(defn handle-drag-start [props-ref event]
+  (let [active       (.-active event)
+        ^js data     (.. active -data -current)
+        entity-id    (.-entity_id data)
+        entities     (:entities @props-ref)
+        entity       (get entities (keyword entity-id))
+        color        (or (:color entity) "#6366f1")
+        ^js act-evt  (.-activatorEvent event)
+        ^js active-el (.-target act-evt)
+        tile-el      (when active-el (.closest active-el ".iris-entity-tile"))
+        rect         (when tile-el (.getBoundingClientRect tile-el))]
+    (reset! tile/dragging-tile (.-id active))
+    (reset! tile/dragging-entity {:entity-id entity-id
+                                  :name      (:name entity)
+                                  :color     color})
+    (reset! tile/drag-ghost {:name     (:name entity)
+                             :color    color
+                             :width    (if rect (.-width rect) 200)
+                             :height   (if rect (.-height rect) 32)
+                             :offset-x (when rect (- (.-clientX act-evt) (.-left rect)))
+                             :offset-y (when rect (- (.-clientY act-evt) (.-top rect)))
+                             :x        (.-clientX act-evt)
+                             :y        (.-clientY act-evt)})
+    (.addEventListener js/window "mousemove" tile/on-mousemove)))
 
 (defn update-tile-drop-target!
   "Update the global drop-target atom based on the current drag position over a tile."
@@ -134,21 +145,11 @@
            :half    (tile/calculate-half-from-rects active-rect over-rect)})))
     (reset! tile/drop-target nil)))
 
-(defn handle-nav-edge-hover
-  "Navigate to an adjacent workspace when the drag first enters a nav edge."
-  [over-id prev-nav-over props-ref]
-  (when (and over-id
-             (str/starts-with? over-id "nav:")
-             (not= over-id @prev-nav-over))
-    (grid-interactions/handle-grid-nav (keyword (subs over-id 4)) props-ref)))
-
-(defn handle-drag-move [props-ref prev-nav-over event]
+(defn handle-drag-move [props-ref event]
   (let [active  (.-active event)
         over    (.-over event)
         over-id (when over (.-id over))]
-    (update-tile-drop-target! active over over-id)
-    (handle-nav-edge-hover over-id prev-nav-over props-ref)
-    (reset! prev-nav-over over-id)))
+    (update-tile-drop-target! active over over-id)))
 
 (defn handle-tile-split
   "Execute a tile split when a drag is dropped onto another tile."
@@ -167,17 +168,20 @@
           (on-workspaces-change
             (tile-interactions/update-workspaces-with-cleanup workspaces pos new-layout tile-id)))))))
 
-(defn handle-drag-end [props-ref prev-nav-over event]
+(defn handle-drag-end [props-ref event]
   (let [active    (.-active event)
         over      (.-over event)
         over-id   (when over (.-id over))
         dt        @tile/drop-target
-        tile-id   (.. active -data -current -tile-id)
-        entity-id (.. active -data -current -entity-id)
+        ^js data  (.. active -data -current)
+        tile-id   (.-tile_id data)
+        entity-id (.-entity_id data)
         {:keys [workspaces on-workspaces-change]} @props-ref]
     (reset! tile/drop-target nil)
     (reset! tile/dragging-tile nil)
-    (reset! prev-nav-over nil)
+    (reset! tile/dragging-entity nil)
+    (reset! tile/drag-ghost nil)
+    (.removeEventListener js/window "mousemove" tile/on-mousemove)
     (when (and over-id tile-id on-workspaces-change)
       (cond
         (and (str/starts-with? over-id "tile:") dt)
@@ -250,31 +254,25 @@
   [_]
   (util/inject-css!)
   (let [command-center? (r/atom false)
-        props-ref       (atom nil)
-        prev-nav-over   (atom nil)]
+        props-ref       (atom nil)]
     (.addEventListener js/document "keydown" (partial handle-keydown command-center? props-ref))
     (.addEventListener js/document "keyup"   (partial handle-keyup command-center?))
     (fn [{:keys [workspaces active-position entities render-entity-tile
                  on-active-position-change logo] :as props}]
       (reset! props-ref props)
-      (let [[cols rows] (grid-dimensions workspaces)
-            dragging?   (boolean @tile/dragging-tile)
-            vis?        (fn [dir] (or dragging? (grid-interactions/can-navigate? dir workspaces active-position)))
-            nav-handler (fn [dir] #(grid-interactions/handle-grid-nav dir props-ref))]
+      (let [[cols rows] (grid-dimensions workspaces)]
         [:div.iris-grid-viewport
          {:style (when @tile/dragging-tile {:cursor "grabbing"})}
          [dnd-context-component
-          {:on-drag-start handle-drag-start
-           :on-drag-move  (partial handle-drag-move props-ref prev-nav-over)
-           :on-drag-end   (partial handle-drag-end props-ref prev-nav-over)}
-          [nav-edge-fc {:css-class "iris-nav-left"   :visible? (vis? :left)  :on-click (nav-handler :left)  :direction :left}]
-          [nav-edge-fc {:css-class "iris-nav-right"  :visible? (vis? :right) :on-click (nav-handler :right) :direction :right}]
-          [nav-edge-fc {:css-class "iris-nav-top"    :visible? (vis? :up)    :on-click (nav-handler :up)    :direction :up}]
-          [nav-edge-fc {:css-class "iris-nav-bottom" :visible? (vis? :down)  :on-click (nav-handler :down)  :direction :down}]
+          {:on-drag-start (partial handle-drag-start props-ref)
+           :on-drag-move  (partial handle-drag-move props-ref)
+           :on-drag-end   (partial handle-drag-end props-ref)}
           [:div.iris-grid-center
            [:div.iris-grid-canvas
             {:style (camera-style cols rows active-position)}
             (grid-canvas cols rows workspaces active-position props)]]
+          [drag-overlay-component]
+          [:f> tile/drag-ghost-portal]
           [command-center-trigger command-center? logo]
           [command-center/command-center-overlay
            {:cols                    cols

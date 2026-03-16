@@ -4,6 +4,13 @@
             [react-dom :as react-dom]
             ["@dnd-kit/core" :refer [useDraggable useDroppable]]))
 
+;; Drag ghost state: entity info + mouse position + dimensions, rendered via portal.
+(def drag-ghost (r/atom nil))
+
+(defn on-mousemove [e]
+  (when @drag-ghost
+    (swap! drag-ghost assoc :x (.-clientX e) :y (.-clientY e))))
+
 (def preset-colors
   "Default color palette available in the tile color picker."
   ["#6366f1" "#8b5cf6" "#ec4899" "#f43f5e" "#f97316"
@@ -79,6 +86,9 @@
 ;; Set by DndContext.onDragStart/End in core.cljs.
 (def dragging-tile (r/atom nil))
 
+;; Entity info for the drag overlay: {:entity-id ... :name ... :color ...}
+(def dragging-entity (r/atom nil))
+
 ;; Set by DndContext.onDragMove in core.cljs: {:tile-id "..." :half :left}
 (def drop-target (r/atom nil))
 
@@ -127,8 +137,8 @@
   [{:keys [node entity-name tile-color close-ref
            color-picker-open? color-picker-rect color-change-ref tile-ref]}]
   (let [result    (useDraggable #js {:id   (:id node)
-                                     :data #js {:tile-id   (:id node)
-                                                :entity-id (:entity-id node)}})
+                                     :data #js {:tile_id   (:id node)
+                                                :entity_id (:entity-id node)}})
         set-ref   (.-setNodeRef result)
         listeners (js->clj (.-listeners result) :keywordize-keys true)
         attrs     (js->clj (.-attributes result) :keywordize-keys true)]
@@ -150,7 +160,8 @@
          color-picker-open? @color-picker-rect tile-color])]
      [:span.iris-entity-tile-header-name entity-name]
      [:button.iris-entity-tile-header-close
-      {:on-click (fn [e]
+      {:on-pointer-down (fn [e] (.stopPropagation e))
+       :on-click (fn [e]
                    (.stopPropagation e)
                    (when @close-ref (@close-ref (:id node))))}
       "\u00d7"]]))
@@ -197,3 +208,24 @@
         (when render-entity-tile
           [render-entity-tile (or entity {:id (:entity-id node)})])]
        [drop-indicator (when drag-over? (:half dt)) drag-over?]])))
+
+(defn drag-ghost-portal []
+  (when-let [g @drag-ghost]
+    (react-dom/createPortal
+      (r/as-element
+        [:div.iris-entity-tile
+         {:style {:position       "fixed"
+                  :left           (- (:x g) (or (:offset-x g) 0))
+                  :top            (- (:y g) (or (:offset-y g) 0))
+                  :width          (:width g)
+                  :height         (:height g)
+                  :z-index        10000
+                  :pointer-events "none"
+                  :opacity        0.85
+                  "--iris-tile-color" (or (:color g) "#6366f1")}}
+         [:div.iris-entity-tile-header
+          [:div {:style {:flex-shrink 0}}
+           [:div.iris-entity-tile-header-dot
+            {:style {:background (or (:color g) "#6366f1")}}]]
+          [:span.iris-entity-tile-header-name (:name g)]]])
+      js/document.body)))
