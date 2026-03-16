@@ -11,8 +11,9 @@
 
 (defn command-center
   "Single element: quarter-circle trigger when closed, full-screen overlay when open."
-  [{:keys [cols rows workspaces active-position entities
-           on-active-position-change on-workspaces-change command-center? logo]}]
+  [{:keys [cols rows workspaces active-position entities entity-types
+           on-active-position-change on-workspaces-change on-entity-create
+           command-center? logo]}]
   (let [open? @command-center?]
     [:div {:class (str "iris-command-center"
                        (when open? " iris-command-center-open"))
@@ -41,7 +42,8 @@
           :on-workspaces-change    on-workspaces-change
           :on-active-position-change on-active-position-change
           :command-center?         command-center?}]
-        [start-menu/start-menu {:entities          entities
-                                :active-position   active-position
-                                :workspaces        workspaces
-                                :on-workspaces-change on-workspaces-change}]])]))
+        [start-menu/start-menu {:entity-types        entity-types
+                                :active-position     active-position
+                                :workspaces          workspaces
+                                :on-workspaces-change on-workspaces-change
+                                :on-entity-create    on-entity-create}]])]))

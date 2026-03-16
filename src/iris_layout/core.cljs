@@ -270,7 +270,9 @@
             :workspaces              workspaces
             :active-position         active-position
             :entities                entities
+            :entity-types            (:entity-types props)
             :on-active-position-change on-active-position-change
             :on-workspaces-change    (:on-workspaces-change props)
+            :on-entity-create        (:on-entity-create props)
             :command-center?         command-center?
             :logo                    logo}]]]))))

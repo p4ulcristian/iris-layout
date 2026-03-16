@@ -43,6 +43,10 @@
            :active-entity   nil
            :entities        initial-entities}))
 
+(def entity-types
+  (vec (map (fn [[_ e]] {:type (:type e) :name (:name e) :color (:color e) :icon (:icon e)})
+            initial-entities)))
+
 (defn app []
   (let [{:keys [workspaces active-position active-entity entities]} @state]
     [iris-layout/grid-component
@@ -50,12 +54,19 @@
        :active-position         active-position
        :active-entity           active-entity
        :entities                entities
+       :entity-types            entity-types
        :render-entity-tile      entity-tile
        :on-workspaces-change    #(swap! state assoc :workspaces %)
        :on-active-position-change #(swap! state assoc :active-position %)
        :on-active-entity-change #(swap! state assoc :active-entity %)
        :on-entity-color-change  (fn [entity-id color]
                                   (swap! state assoc-in [:entities (keyword entity-id) :color] color))
+       :on-entity-create        (fn [{:keys [instance-id type name color]}]
+                                  (let [template (get initial-entities (keyword type))]
+                                    (swap! state assoc-in [:entities (keyword instance-id)]
+                                           {:id instance-id :name name :type type
+                                            :color (or color (:color template))
+                                            :icon (:icon template)})))
        :logo [:i.fa-solid.fa-eye]}]))
 
 (defonce root (rdc/create-root (js/document.getElementById "app")))

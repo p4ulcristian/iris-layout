@@ -252,6 +252,7 @@
   background: color-mix(in srgb, var(--_color) 20%, rgba(15, 20, 35, 0.8));
   border-radius: 4px;
   overflow: hidden;
+  cursor: pointer;
 }
 
 .iris-command-center-tile-name {
