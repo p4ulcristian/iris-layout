@@ -120,48 +120,7 @@
 .iris-grid-cell-active {
 }
 
-/* --- Command Center trigger (bottom-left quarter circle) --- */
-
-.iris-command-center-trigger {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 72px;
-  height: 72px;
-  z-index: 90;
-  cursor: pointer;
-  color: rgba(255, 255, 255, 0.08);
-  transition: color 300ms ease, transform 300ms ease;
-  transform-origin: bottom left;
-}
-
-.iris-command-center-trigger:hover {
-  color: rgba(255, 255, 255, 0.2);
-  transform: scale(1.15);
-}
-
-.iris-command-center-trigger:active {
-  color: rgba(255, 255, 255, 0.3);
-  transform: scale(1.05);
-}
-
-.iris-command-center-trigger-bg {
-  position: absolute;
-  inset: 0;
-}
-
-.iris-command-center-trigger-logo {
-  position: absolute;
-  bottom: 42.43%;
-  left: 42.43%;
-  transform: translate(-50%, 50%);
-  color: rgba(255, 255, 255, 0.7);
-  font-size: 20px;
-  line-height: 1;
-  pointer-events: none;
-}
-
-/* --- Command Center overlay --- */
+/* --- Command Center (trigger + overlay as one element) --- */
 
 .iris-command-center {
   position: absolute;
@@ -171,29 +130,41 @@
   align-items: center;
   justify-content: center;
   padding: 24px;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  clip-path: circle(72px at 0px 100%);
+  transition: clip-path 400ms cubic-bezier(0.22, 1, 0.36, 1);
   pointer-events: none;
 }
 
 .iris-command-center-open {
+  clip-path: circle(150% at 36px calc(100% - 36px));
   pointer-events: auto;
 }
 
-.iris-command-center-backdrop {
+.iris-command-center-trigger {
   position: absolute;
   bottom: 0;
   left: 0;
-  width: 200vmax;
-  height: 200vmax;
-  border-radius: 50%;
-  background: rgba(0, 0, 0, 0.3);
-  backdrop-filter: blur(1px);
-  transform-origin: 0% 100%;
-  transform: scale(0);
-  transition: transform 400ms cubic-bezier(0.22, 1, 0.36, 1);
+  width: 72px;
+  height: 72px;
+  cursor: pointer;
+  pointer-events: auto;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.iris-command-center-open .iris-command-center-backdrop {
-  transform: scale(1);
+.iris-command-center-logo {
+  position: absolute;
+  bottom: 21px;
+  left: 21px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 20px;
+  line-height: 1;
+  pointer-events: none;
 }
 
 .iris-command-center-grid {

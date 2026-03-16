@@ -216,16 +216,6 @@
 ;; Grid component
 ;; ============================================================
 
-(defn command-center-trigger [command-center? logo]
-  [:div.iris-command-center-trigger
-   {:on-click (fn [_] (reset! command-center? true))}
-   [:svg.iris-command-center-trigger-bg {:viewBox "0 0 48 48" :width "100%" :height "100%"}
-    [:path {:d "M0 48 L0 0 A48 48 0 0 1 48 48 Z" :fill "currentColor"}]]
-   [:div.iris-command-center-trigger-logo
-    (or logo
-        [:svg {:viewBox "0 0 24 24" :width "20" :height "20"}
-         [:circle {:cx 12 :cy 12 :r 7 :fill "none" :stroke "currentColor" :stroke-width 1.5}]
-         [:circle {:cx 12 :cy 12 :r 2.5 :fill "currentColor"}]])]])
 
 (defn grid-component
   "Grid — a 2D grid of workspaces with camera-based navigation.
@@ -274,8 +264,7 @@
             (grid-canvas cols rows workspaces active-position props)]]
           [drag-overlay-component]
           [:f> tile/drag-ghost-portal]
-          [command-center-trigger command-center? logo]
-          [command-center/command-center-overlay
+          [command-center/command-center
            {:cols                    cols
             :rows                    rows
             :workspaces              workspaces
@@ -283,4 +272,5 @@
             :entities                entities
             :on-active-position-change on-active-position-change
             :on-workspaces-change    (:on-workspaces-change props)
-            :command-center?         command-center?}]]]))))
+            :command-center?         command-center?
+            :logo                    logo}]]]))))

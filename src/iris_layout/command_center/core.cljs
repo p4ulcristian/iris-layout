@@ -1,29 +1,47 @@
 (ns iris-layout.command-center.core
-  "Command Center overlay — composes mini workspaces and start menu."
+  "Command Center — single element that is both trigger and overlay.
+   Clipped to a quarter circle when closed, grows to full screen when open."
   (:require [iris-layout.command-center.mini-workspaces :as mini-workspaces]
             [iris-layout.command-center.start-menu :as start-menu]))
 
-(defn command-center-overlay
-  "Full-screen overlay showing all workspaces as a mini grid plus a start menu.
-   Opens on Alt key hold or corner button click."
+(defn default-logo []
+  [:svg {:viewBox "0 0 24 24" :width "20" :height "20"}
+   [:circle {:cx 12 :cy 12 :r 7 :fill "none" :stroke "currentColor" :stroke-width 1.5}]
+   [:circle {:cx 12 :cy 12 :r 2.5 :fill "currentColor"}]])
+
+(defn command-center
+  "Single element: quarter-circle trigger when closed, full-screen overlay when open."
   [{:keys [cols rows workspaces active-position entities
-           on-active-position-change on-workspaces-change command-center?]}]
-  [:div {:class (str "iris-command-center"
-                     (when @command-center? " iris-command-center-open"))
-         :style (when @mini-workspaces/dragging? {:cursor "grabbing"})}
-   [:div.iris-command-center-backdrop
-    {:on-click (fn [_] (when-not @mini-workspaces/dragging? (reset! command-center? false)))}]
-   [:div.iris-command-center-content
-    [mini-workspaces/workspace-grid
-     {:cols                    cols
-      :rows                    rows
-      :workspaces              workspaces
-      :active-position         active-position
-      :entities                entities
-      :on-workspaces-change    on-workspaces-change
-      :on-active-position-change on-active-position-change
-      :command-center?         command-center?}]
-    [start-menu/start-menu {:entities          entities
-                            :active-position   active-position
-                            :workspaces        workspaces
-                            :on-workspaces-change on-workspaces-change}]]])
+           on-active-position-change on-workspaces-change command-center? logo]}]
+  (let [open? @command-center?]
+    [:div {:class (str "iris-command-center"
+                       (when open? " iris-command-center-open"))
+           :style (when @mini-workspaces/dragging? {:cursor "grabbing"})
+           :on-click (fn [e]
+                       (when (and open?
+                                  (= (.-target e) (.-currentTarget e))
+                                  (not @mini-workspaces/dragging?))
+                         (reset! command-center? false)))}
+     ;; Trigger hit area — clickable circle at bottom-left
+     [:div.iris-command-center-trigger
+      {:on-click (fn [e]
+                   (.stopPropagation e)
+                   (reset! command-center? (not open?)))}
+      [:div.iris-command-center-logo
+       (or logo [default-logo])]]
+     ;; Content — only meaningful when open
+     (when open?
+       [:div.iris-command-center-content
+        [mini-workspaces/workspace-grid
+         {:cols                    cols
+          :rows                    rows
+          :workspaces              workspaces
+          :active-position         active-position
+          :entities                entities
+          :on-workspaces-change    on-workspaces-change
+          :on-active-position-change on-active-position-change
+          :command-center?         command-center?}]
+        [start-menu/start-menu {:entities          entities
+                                :active-position   active-position
+                                :workspaces        workspaces
+                                :on-workspaces-change on-workspaces-change}]])]))
