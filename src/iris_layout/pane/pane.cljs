@@ -6,11 +6,11 @@
 
 (defn pane
   "Recursively render a layout tree node as either a tile or a split pane."
-  [node on-split on-close on-ratio-change active-entity entities render-entity-tile on-active-entity-change on-entity-color-change]
+  [node on-close on-ratio-change active-entity entities render-entity-tile on-active-entity-change on-entity-color-change]
   (case (layout/node-type node)
     :tile
     [tile/entity-tile-component
-     node on-split on-close
+     node nil on-close
      (= (:entity-id node) active-entity)
      entities render-entity-tile nil on-active-entity-change on-entity-color-change]
 
@@ -21,9 +21,9 @@
       [:div.iris-entity-tile-group
        {:class direction}
        [:div {:style {:flex ratio}}
-        [pane child1 on-split on-close on-ratio-change active-entity entities render-entity-tile on-active-entity-change on-entity-color-change]]
+        [pane child1 on-close on-ratio-change active-entity entities render-entity-tile on-active-entity-change on-entity-color-change]]
        [resizer/resizer direction (:id node) on-ratio-change]
        [:div {:style {:flex (- 1 ratio)}}
-        [pane child2 on-split on-close on-ratio-change active-entity entities render-entity-tile on-active-entity-change on-entity-color-change]]])
+        [pane child2 on-close on-ratio-change active-entity entities render-entity-tile on-active-entity-change on-entity-color-change]]])
 
     [:div "Unknown node type"]))
