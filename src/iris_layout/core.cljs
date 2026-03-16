@@ -9,7 +9,8 @@
             [iris-layout.pane.tile :as tile]
             [iris-layout.command-center.core :as command-center]
             [iris-layout.interactions.tile :as tile-interactions]
-            [iris-layout.interactions.grid :as grid-interactions]))
+            [iris-layout.interactions.grid :as grid-interactions]
+            [iris-layout.schema :as schema]))
 
 (r/set-default-compiler! (r/create-compiler {:function-components true}))
 
@@ -258,6 +259,7 @@
     (.addEventListener js/document "keyup"   (partial handle-keyup command-center?))
     (fn [{:keys [workspaces active-position entities render-entity-tile
                  on-active-position-change logo] :as props}]
+      (schema/validate-grid-props props)
       (reset! props-ref props)
       (let [[cols rows] (grid-dimensions workspaces)]
         [:div.iris-grid-viewport
