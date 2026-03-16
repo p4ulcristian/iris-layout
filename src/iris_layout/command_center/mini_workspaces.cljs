@@ -72,10 +72,10 @@
   [layout-node entities on-close-entity source-pos]
   (case (layout/node-type layout-node)
     :tile
-    [:f> mini-tile-fc {:layout-node     layout-node
-                       :entities        entities
-                       :on-close-entity on-close-entity
-                       :source-pos      source-pos}]
+    [mini-tile-fc {:layout-node     layout-node
+                   :entities        entities
+                   :on-close-entity on-close-entity
+                   :source-pos      source-pos}]
 
     :split
     (let [[c1 c2] (:children layout-node)
@@ -143,11 +143,11 @@
               x (range view-cols)]
           (let [pos [x y]]
             ^{:key (str x "," y)}
-            [:f> grid-cell-fc {:pos                       pos
-                                :workspace                 (get workspaces pos)
-                                :workspaces                workspaces
-                                :active-pos                [ax ay]
-                                :entities                  entities
-                                :on-workspaces-change      on-workspaces-change
-                                :on-active-position-change on-active-position-change
-                                :command-center?           command-center?}])))]]))
+            [grid-cell-fc {:pos                       pos
+                            :workspace                 (get workspaces pos)
+                            :workspaces                workspaces
+                            :active-pos                [ax ay]
+                            :entities                  entities
+                            :on-workspaces-change      on-workspaces-change
+                            :on-active-position-change on-active-position-change
+                            :command-center?           command-center?}]))]]))

@@ -185,7 +185,7 @@
         :on-mouse-enter (fn [_]
                           (when (and (not focused?) @active-entity-chg-ref)
                             (@active-entity-chg-ref (:entity-id node))))}
-       [:f> tile-header-fc {:node               node
+       [tile-header-fc {:node               node
                              :entity-name        (:name entity)
                              :tile-color         tile-color
                              :close-ref          close-ref

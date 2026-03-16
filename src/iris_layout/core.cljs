@@ -82,7 +82,7 @@
          (fn [new-layout]
            (when on-workspaces-change
              (on-workspaces-change
-               (update-workspaces-with-cleanup workspaces pos new-layout))))
+               (tile-interactions/update-workspaces-with-cleanup workspaces pos new-layout))))
          :on-entity-close on-entity-close}]
        [:div.iris-empty-workspace
         {:on-drag-over (fn [e] (.preventDefault e))
