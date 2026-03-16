@@ -133,23 +133,22 @@
     (.addEventListener js/window "mousemove" tile/on-mousemove)))
 
 (defn update-tile-drop-target!
-  "Update the global drop-target atom based on the current drag position over a tile."
-  [active over over-id]
+  "Update the global drop-target atom based on the pointer position over a tile."
+  [over over-id]
   (if (and over-id (str/starts-with? over-id "tile:"))
     (let [target-tile-id (subs over-id 5)
-          active-rect    (.. active -rect -current -translated)
+          ghost          @tile/drag-ghost
           over-rect      (.-rect over)]
-      (when (and active-rect over-rect)
+      (when (and ghost over-rect)
         (reset! tile/drop-target
           {:tile-id target-tile-id
-           :half    (tile/calculate-half-from-rects active-rect over-rect)})))
+           :half    (tile/calculate-half-from-pointer (:x ghost) (:y ghost) over-rect)})))
     (reset! tile/drop-target nil)))
 
 (defn handle-drag-move [props-ref event]
-  (let [active  (.-active event)
-        over    (.-over event)
+  (let [over    (.-over event)
         over-id (when over (.-id over))]
-    (update-tile-drop-target! active over over-id)))
+    (update-tile-drop-target! over over-id)))
 
 (defn handle-tile-split
   "Execute a tile split when a drag is dropped onto another tile."

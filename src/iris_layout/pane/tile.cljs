@@ -47,15 +47,13 @@
       (when @close-handler
         (.removeEventListener js/document "click" @close-handler)))))
 
-(defn calculate-half-from-rects
-  "Determine which half of a tile the dragged element is closest to, using their bounding rects."
-  [active-rect over-rect]
+(defn calculate-half-from-pointer
+  "Determine which half of a tile the pointer is in, using pointer coords and the tile's bounding rect."
+  [pointer-x pointer-y over-rect]
   (let [cx (+ (.-left over-rect) (/ (.-width over-rect) 2))
         cy (+ (.-top over-rect) (/ (.-height over-rect) 2))
-        ax (+ (.-left active-rect) (/ (.-width active-rect) 2))
-        ay (+ (.-top active-rect) (/ (.-height active-rect) 2))
-        dx (- ax cx)
-        dy (- ay cy)]
+        dx (- pointer-x cx)
+        dy (- pointer-y cy)]
     (if (> (js/Math.abs dx) (js/Math.abs dy))
       (if (neg? dx) :left :right)
       (if (neg? dy) :top :bottom))))
