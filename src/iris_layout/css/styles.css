@@ -26,17 +26,12 @@
 /* --- Body --- */
 
 .iris-body {
-  --iris-grid-gap: 16px;
-  display: grid;
-  grid-template-columns: var(--iris-grid-gap) 1fr var(--iris-grid-gap);
-  grid-template-rows: var(--iris-grid-gap) 1fr var(--iris-grid-gap);
-  grid-template-areas:
-    ".    top    ."
-    "left center right"
-    ".    bottom .";
+  display: flex;
   flex: 1;
   overflow: hidden;
   min-width: 0;
+  min-height: 0;
+  padding: 16px;
 }
 
 .iris-body-stage {
