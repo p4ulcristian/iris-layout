@@ -22,7 +22,6 @@
 (defn palette-item
   "Render a single entity in the start menu palette."
   [entity-id entity active-pos workspaces on-workspaces-change]
-  ^{:key entity-id}
   [:div.iris-command-center-palette-item
    {:style {"--iris-tile-color" (or (:color entity) "#6366f1")}
     :on-click (palette-item-on-click entity-id active-pos workspaces on-workspaces-change)}
@@ -32,11 +31,16 @@
       {:style {:background (or (:color entity) "#6366f1")}}])
    [:span.iris-command-center-palette-name (:name entity)]])
 
+(defn start-menu-items
+  [{:keys [entities active-position workspaces on-workspaces-change]}]
+  [:<>
+   (map (fn [[entity-id entity]]
+          ^{:key entity-id}
+          [palette-item entity-id entity active-position workspaces on-workspaces-change])
+        (remove (comp :instance val) entities))])
+
 (defn start-menu
   "Render the start menu with all available entities."
-  [entities active-position workspaces on-workspaces-change]
+  [props]
   [:div.iris-command-center-palette
-   (doall
-     (for [[entity-id entity] entities
-           :when (not (:instance entity))]
-       [palette-item entity-id entity active-position workspaces on-workspaces-change]))])
+   [start-menu-items props]])

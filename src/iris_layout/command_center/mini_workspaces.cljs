@@ -127,27 +127,44 @@
         (cell-on-close-tile pos workspace workspaces on-workspaces-change)
         pos])]))
 
+(defn grid-view-size [cols rows]
+  [(inc cols) (inc rows)])
+
+(defn grid-style [view-cols view-rows]
+  {:grid-template-columns (str "repeat(" view-cols ", 1fr)")
+   :grid-template-rows    (str "repeat(" view-rows ", 1fr)")})
+
+(defn grid-cells [{:keys [view-cols view-rows workspaces active-position entities
+                          on-workspaces-change on-active-position-change command-center?]}]
+  [:<>
+   (map (fn [[x y]]
+          ^{:key (str x "," y)}
+          [grid-cell-fc {:pos                       [x y]
+                         :workspace                 (get workspaces [x y])
+                         :workspaces                workspaces
+                         :active-pos                active-position
+                         :entities                  entities
+                         :on-workspaces-change      on-workspaces-change
+                         :on-active-position-change on-active-position-change
+                         :command-center?           command-center?}])
+        (for [y (range view-rows)
+              x (range view-cols)]
+          [x y]))])
+
 (defn workspace-grid
   "Render the grid of all workspace cells."
-  [cols rows workspaces active-position entities on-workspaces-change on-active-position-change command-center?]
-  (let [view-cols (+ cols 1)
-        view-rows (+ rows 1)
-        [ax ay]   active-position]
+  [{:keys [cols rows workspaces active-position entities
+           on-workspaces-change on-active-position-change command-center?]}]
+  (let [[view-cols view-rows] (grid-view-size cols rows)]
     [dnd-context {:on-drag-start (on-drag-start-handler)
                   :on-drag-end   (on-drag-end-handler workspaces on-workspaces-change)}
      [:div.iris-command-center-grid
-      {:style {:grid-template-columns (str "repeat(" view-cols ", 1fr)")
-               :grid-template-rows    (str "repeat(" view-rows ", 1fr)")}}
-      (doall
-        (for [y (range view-rows)
-              x (range view-cols)]
-          (let [pos [x y]]
-            ^{:key (str x "," y)}
-            [grid-cell-fc {:pos                       pos
-                            :workspace                 (get workspaces pos)
-                            :workspaces                workspaces
-                            :active-pos                [ax ay]
-                            :entities                  entities
-                            :on-workspaces-change      on-workspaces-change
-                            :on-active-position-change on-active-position-change
-                            :command-center?           command-center?}]))]]))
+      {:style (grid-style view-cols view-rows)}
+      [grid-cells {:view-cols                 view-cols
+                   :view-rows                 view-rows
+                   :workspaces                workspaces
+                   :active-position           active-position
+                   :entities                  entities
+                   :on-workspaces-change      on-workspaces-change
+                   :on-active-position-change on-active-position-change
+                   :command-center?           command-center?}]]]))

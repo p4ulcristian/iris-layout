@@ -1,6 +1,7 @@
 (ns iris-demo.core
   (:require [reagent.core :as r]
             [reagent.dom.client :as rdc]
+            [devtools.core :as devtools]
             [iris-layout.core :as iris-layout]))
 
 (def initial-entities
@@ -53,5 +54,7 @@
 
 (defonce root (rdc/create-root (js/document.getElementById "app")))
 
-(defn init! [] (rdc/render root [app]))
+(defn init! []
+  (devtools/install!)
+  (rdc/render root [app]))
 (defn reload! [] (rdc/render root [app]))

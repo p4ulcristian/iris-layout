@@ -10,4 +10,5 @@
    :output-dir "public/js"
    :asset-path "/js"
    :modules {:main {:init-fn iris-demo.core/init!}}
+   :compiler-options {:source-map true}
    :devtools {:after-load iris-demo.core/reload!}}}}
