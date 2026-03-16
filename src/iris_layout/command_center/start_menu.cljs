@@ -1,6 +1,7 @@
 (ns iris-layout.command-center.start-menu
   "Start menu — entity palette for adding entities to the active workspace."
-  (:require [iris-layout.util :as util]))
+  (:require [clojure.string]
+            [iris-layout.util :as util]))
 
 (defn palette-item-on-click
   "Handle clicking an entity in the palette — add it to the active workspace."
@@ -37,7 +38,7 @@
    (map (fn [[entity-id entity]]
           ^{:key entity-id}
           [palette-item entity-id entity active-position workspaces on-workspaces-change])
-        (remove (comp :instance val) entities))])
+        (sort-by (comp clojure.string/lower-case :name val) (remove (comp :instance val) entities)))])
 
 (defn start-menu
   "Render the start menu with all available entities."

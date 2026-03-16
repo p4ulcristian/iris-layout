@@ -9,7 +9,13 @@
    :terminal {:id "terminal" :name "Terminal"     :type "terminal" :color "#10b981" :icon (fn [] [:i.fa-solid.fa-terminal])}
    :browser  {:id "browser"  :name "Preview"      :type "browser"  :color "#f59e0b" :icon (fn [] [:i.fa-solid.fa-globe])}
    :notes    {:id "notes"    :name "Notes"         :type "notes"    :color "#ec4899" :icon (fn [] [:i.fa-solid.fa-note-sticky])}
-   :repl     {:id "repl"     :name "REPL"          :type "repl"     :color "#8b5cf6" :icon (fn [] [:i.fa-solid.fa-chevron-right])}})
+   :repl     {:id "repl"     :name "REPL"          :type "repl"     :color "#8b5cf6" :icon (fn [] [:i.fa-solid.fa-chevron-right])}
+   :chat     {:id "chat"     :name "Chat"          :type "chat"     :color "#a371f7" :icon (fn [] [:i.fa-solid.fa-comments])}
+   :database {:id "database" :name "Database"      :type "database" :color "#4a9"    :icon (fn [] [:i.fa-solid.fa-database])}
+   :git      {:id "git"      :name "Git"           :type "git"      :color "#f78166" :icon (fn [] [:i.fa-brands.fa-git-alt])}
+   :settings {:id "settings" :name "Settings"      :type "settings" :color "#8b949e" :icon (fn [] [:i.fa-solid.fa-gear])}
+   :files    {:id "files"    :name "Files"          :type "files"    :color "#3b82f6" :icon (fn [] [:i.fa-solid.fa-folder])}
+   :logs     {:id "logs"     :name "Logs"           :type "logs"     :color "#eab308" :icon (fn [] [:i.fa-solid.fa-list])}})
 
 (def initial-workspaces
   {[0 0] {:layout {:type "split" :id "s1" :direction "horizontal" :ratio 0.6

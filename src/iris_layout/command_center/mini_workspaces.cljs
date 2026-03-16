@@ -163,7 +163,8 @@
 
 (defn grid-style [view-cols view-rows]
   {:grid-template-columns (str "repeat(" view-cols ", 1fr)")
-   :grid-template-rows    (str "repeat(" view-rows ", 1fr)")})
+   :grid-template-rows    (str "repeat(" view-rows ", 1fr)")
+   :aspect-ratio          (str view-cols " / " view-rows)})
 
 (defn grid-cells [{:keys [view-cols view-rows workspaces active-position entities
                           on-workspaces-change on-active-position-change command-center?]}]
