@@ -88,7 +88,7 @@
         {:on-drag-over (fn [e] (.preventDefault e))
          :on-drop (fn [e]
                     (when on-workspaces-change
-                      (grid-interactions/handle-empty-workspace-drop e x y workspaces on-workspaces-change @tile/drag-source-tile)))}])]))
+                      (grid-interactions/handle-empty-workspace-drop e x y workspaces on-workspaces-change @tile/dragging-tile)))}])]))
 
 (defn- grid-canvas
   [cols rows workspaces active-position props]
@@ -164,7 +164,7 @@
                  on-active-position-change on-workspaces-change logo] :as props}]
       (reset! props-ref props)
       (let [[cols rows] (grid-dimensions workspaces)
-            dragging? @tile/drag-source-tile
+            dragging? @tile/dragging-tile
             vis? (fn [dir] (or dragging? (grid-interactions/can-navigate? dir workspaces active-position)))
             nav-handler (fn [dir] #(grid-interactions/handle-grid-nav dir props-ref))]
         [:div.iris-grid-viewport
