@@ -178,8 +178,8 @@
   gap: 8px;
   margin: auto;
   padding: 16px;
-  max-width: 100%;
-  max-height: 100%;
+  width: calc(100% - 32px);
+  max-height: calc(100% - 100px);
   min-height: 0;
   min-width: 0;
 }
@@ -189,13 +189,13 @@
   border-radius: 8px;
   overflow: visible;
   cursor: pointer;
+  aspect-ratio: 16 / 9;
   border: 2px solid rgba(255, 255, 255, 0.1);
   background: rgba(15, 20, 35, 0.8);
   transition: border-color 200ms ease, box-shadow 200ms ease;
   display: flex;
   padding: 3px;
   gap: 2px;
-  aspect-ratio: 1;
   min-width: 0;
   min-height: 0;
 }

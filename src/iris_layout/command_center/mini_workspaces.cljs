@@ -63,9 +63,7 @@
                                    :direction "horizontal" :ratio 0.5
                                    :children [(:layout target-ws) new-tile]}
                                   new-tile)
-                  cleaned  (if source-layout
-                             (assoc workspaces source-pos (assoc source-ws :layout source-layout))
-                             (dissoc workspaces source-pos))
+                  cleaned  (assoc workspaces source-pos (assoc source-ws :layout source-layout))
                   updated  (assoc cleaned target-pos (assoc target-ws :layout target-layout))]
               (on-workspaces-change updated))))))))
 
@@ -126,9 +124,7 @@
     (when on-workspaces-change
       (let [new-layout (layout/remove-tile-from-layout (:layout workspace) tile-id)]
         (on-workspaces-change
-          (if new-layout
-            (assoc workspaces pos (assoc workspace :layout new-layout))
-            (dissoc workspaces pos)))))))
+          (assoc workspaces pos (assoc workspace :layout new-layout)))))))
 
 (defn grid-cell-class
   "Build CSS class string for a workspace cell."
@@ -159,12 +155,10 @@
                  pos on-active-position-change))])]))
 
 (defn grid-view-size [cols rows]
-  [(inc cols) (inc rows)])
+  [cols rows])
 
-(defn grid-style [view-cols view-rows]
-  {:grid-template-columns (str "repeat(" view-cols ", 1fr)")
-   :grid-template-rows    (str "repeat(" view-rows ", 1fr)")
-   :aspect-ratio          (str view-cols " / " view-rows)})
+(defn grid-style [view-cols _view-rows]
+  {:grid-template-columns (str "repeat(" view-cols ", minmax(120px, 1fr))")})
 
 (defn grid-cells [{:keys [view-cols view-rows workspaces active-position entities
                           on-workspaces-change on-active-position-change command-center?]}]

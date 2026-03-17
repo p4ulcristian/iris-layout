@@ -37,13 +37,13 @@
 ;; Grid components
 ;; ============================================================
 
+(def grid-cols 3)
+(def grid-rows 3)
+
 (defn grid-dimensions
-  "Compute grid bounds from workspace [x y] keys. Returns [cols rows]."
-  [workspaces]
-  (if (empty? workspaces)
-    [1 1]
-    [(inc (apply max (map first (keys workspaces))))
-     (inc (apply max (map second (keys workspaces))))]))
+  "Fixed 3×3 grid. Returns [cols rows]."
+  [_workspaces]
+  [grid-cols grid-rows])
 
 (defn empty-workspace-fc
   "Droppable empty workspace cell."
@@ -193,6 +193,8 @@
             x y workspaces on-workspaces-change tile-id entity-id))))))
 
 (defn handle-keydown [command-center? props-ref e]
+  (when (= (.-key e) "Escape")
+    (reset! command-center? false))
   (when (and (= (.-key e) "Alt") (not (.-repeat e)))
     (reset! command-center? true))
   (when (.-altKey e)

@@ -18,16 +18,16 @@
    :logs     {:id "logs"     :name "Logs"           :type "logs"     :color "#eab308" :icon (fn [] [:i.fa-solid.fa-list])}})
 
 (def initial-workspaces
-  {[0 0] {:layout {:type "split" :id "s1" :direction "horizontal" :ratio 0.6
+  {[1 1] {:layout {:type "split" :id "s1" :direction "horizontal" :ratio 0.6
                    :children [{:type "tile" :id "t1" :entity-id "editor"}
                                {:type "split" :id "s2" :direction "vertical" :ratio 0.6
                                 :children [{:type "tile" :id "t2" :entity-id "terminal"}
                                            {:type "tile" :id "t3" :entity-id "repl"}]}]}}
-   [1 0] {:layout {:type "split" :id "s3" :direction "horizontal" :ratio 0.5
+   [2 1] {:layout {:type "split" :id "s3" :direction "horizontal" :ratio 0.5
                    :children [{:type "tile" :id "t4" :entity-id "editor"}
                                {:type "tile" :id "t5" :entity-id "browser"}]}}
    [0 1] {:layout {:type "tile" :id "t6" :entity-id "notes"}}
-   [1 1] {:layout {:type "split" :id "s4" :direction "vertical" :ratio 0.5
+   [1 0] {:layout {:type "split" :id "s4" :direction "vertical" :ratio 0.5
                    :children [{:type "tile" :id "t7" :entity-id "terminal"}
                                {:type "tile" :id "t8" :entity-id "repl"}]}}})
 
@@ -39,7 +39,7 @@
 
 (defonce state
   (r/atom {:workspaces      initial-workspaces
-           :active-position [0 0]
+           :active-position [1 1]
            :active-entity   nil
            :entities        initial-entities}))
 

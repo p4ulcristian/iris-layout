@@ -10,28 +10,21 @@
     :down  [0 1]))
 
 (defn can-navigate?
-  [dir workspaces active-position]
+  [dir _workspaces active-position]
   (let [[dx dy] (direction->delta dir)
         [x y] active-position
         new-x (+ x dx)
-        new-y (+ y dy)
-        active-ws      (get workspaces [x y])
-        current-empty? (nil? (:layout active-ws))
-        target-ws      (get workspaces [new-x new-y])
-        target-has-layout? (boolean (and target-ws (:layout target-ws)))]
-    (and (>= new-x 0) (>= new-y 0)
-         (not (and current-empty? (not target-has-layout?))))))
+        new-y (+ y dy)]
+    (and (>= new-x 0) (< new-x 3)
+         (>= new-y 0) (< new-y 3))))
 
 (defn handle-grid-nav
   [dir props-ref]
-  (let [{:keys [workspaces active-position
-                on-workspaces-change on-active-position-change]} @props-ref]
+  (let [{:keys [workspaces active-position on-active-position-change]} @props-ref]
     (when (can-navigate? dir workspaces active-position)
       (let [[dx dy] (direction->delta dir)
             [x y] active-position
             new-pos [(+ x dx) (+ y dy)]]
-        (when (and (not (get workspaces new-pos)) on-workspaces-change)
-          (on-workspaces-change (assoc workspaces new-pos {:layout nil})))
         (when on-active-position-change
           (on-active-position-change new-pos))))))
 
