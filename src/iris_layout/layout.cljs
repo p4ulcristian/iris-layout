@@ -98,6 +98,16 @@
     (or (find-tile-by-entity (first (:children tree)) entity-id)
         (find-tile-by-entity (second (:children tree)) entity-id))))
 
+(defn last-tile
+  "Find the last (rightmost/bottommost) tile in a layout tree."
+  [tree]
+  (cond
+    (nil? tree) nil
+    (= (node-type tree) :tile) tree
+    (= (node-type tree) :split)
+    (or (last-tile (second (:children tree)))
+        (last-tile (first (:children tree))))))
+
 (defn remove-tile-from-layout
   "Remove a tile by tile-id and collapse empty splits.
    Returns nil if the entire tree becomes empty."

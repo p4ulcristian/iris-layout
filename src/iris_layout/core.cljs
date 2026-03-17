@@ -198,6 +198,28 @@
   (when (and (= (.-key e) "Alt") (not (.-repeat e)))
     (reset! command-center? true))
   (when (.-altKey e)
+    (case (.-code e)
+      "KeyW" (when-let [props @props-ref]
+               (.preventDefault e)
+               (reset! command-center? false)
+               (let [{:keys [workspaces active-position active-entity
+                             on-workspaces-change on-entity-close
+                             on-active-entity-change]} props
+                     ws     (get workspaces active-position)
+                     layout (:layout ws)]
+                 (when-let [tile (when active-entity
+                                   (layout/find-tile-by-entity layout active-entity))]
+                   (let [new-layout (layout/remove-tile-from-layout layout (:id tile))
+                         next-tile  (layout/last-tile new-layout)]
+                     (when on-workspaces-change
+                       (on-workspaces-change
+                         (assoc workspaces active-position (assoc ws :layout new-layout))))
+                     (when on-entity-close
+                       (on-entity-close (:entity-id tile)))
+                     (when on-active-entity-change
+                       (on-active-entity-change
+                         (when next-tile (:entity-id next-tile))))))))
+      nil)
     (let [dir (case (.-key e)
                 "ArrowLeft"  :left
                 "ArrowRight" :right
@@ -271,10 +293,12 @@
             :rows                    rows
             :workspaces              workspaces
             :active-position         active-position
+            :active-entity           (:active-entity props)
             :entities                entities
             :entity-types            (:entity-types props)
             :on-active-position-change on-active-position-change
             :on-workspaces-change    (:on-workspaces-change props)
             :on-entity-create        (:on-entity-create props)
+            :on-active-entity-change (:on-active-entity-change props)
             :command-center?         command-center?
             :logo                    logo}]]]))))

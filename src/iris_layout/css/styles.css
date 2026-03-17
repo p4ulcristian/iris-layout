@@ -131,16 +131,16 @@
   align-items: center;
   justify-content: center;
   padding: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(0, 0, 0, 0.35);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
-  clip-path: circle(72px at 0px 100%);
-  transition: clip-path 400ms cubic-bezier(0.22, 1, 0.36, 1);
+  clip-path: circle(44px at 0px 100%);
+  transition: clip-path 700ms cubic-bezier(0.22, 1, 0.36, 1);
   pointer-events: none;
 }
 
 .iris-command-center-open {
-  clip-path: circle(150% at 36px calc(100% - 36px));
+  clip-path: circle(150% at 22px calc(100% - 22px));
   pointer-events: auto;
 }
 
@@ -148,8 +148,8 @@
   position: absolute;
   bottom: 0;
   left: 0;
-  width: 72px;
-  height: 72px;
+  width: 44px;
+  height: 44px;
   cursor: pointer;
   pointer-events: auto;
   z-index: 2;
@@ -160,8 +160,8 @@
 
 .iris-command-center-logo {
   position: absolute;
-  bottom: 21px;
-  left: 21px;
+  bottom: 12px;
+  left: 12px;
   color: rgba(255, 255, 255, 0.7);
   font-size: 20px;
   line-height: 1;
@@ -178,7 +178,8 @@
   gap: 8px;
   margin: auto;
   padding: 16px;
-  width: calc(100% - 32px);
+  width: fit-content;
+  max-width: calc(100% - 32px);
   max-height: calc(100% - 100px);
   min-height: 0;
   min-width: 0;
@@ -187,7 +188,7 @@
 .iris-command-center-cell {
   position: relative;
   border-radius: 8px;
-  overflow: visible;
+  overflow: hidden;
   cursor: pointer;
   aspect-ratio: 16 / 9;
   border: 2px solid rgba(255, 255, 255, 0.1);
@@ -301,13 +302,13 @@
   opacity: 0;
   transform: translateY(10px) scale(0.97);
   transform-origin: 0% 100%;
-  transition: opacity 250ms ease, transform 250ms ease;
+  transition: opacity 400ms ease, transform 400ms ease;
 }
 
 .iris-command-center-open .iris-command-center-content {
   opacity: 1;
   transform: translateY(0) scale(1);
-  transition-delay: 150ms;
+  transition-delay: 250ms;
 }
 
 /* Entity palette — dock at bottom, wall to wall */

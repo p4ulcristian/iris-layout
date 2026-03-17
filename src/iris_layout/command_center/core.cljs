@@ -11,9 +11,9 @@
 
 (defn command-center
   "Single element: quarter-circle trigger when closed, full-screen overlay when open."
-  [{:keys [cols rows workspaces active-position entities entity-types
+  [{:keys [cols rows workspaces active-position active-entity entities entity-types
            on-active-position-change on-workspaces-change on-entity-create
-           command-center? logo]}]
+           on-active-entity-change command-center? logo]}]
   (let [open? @command-center?]
     [:div {:class (str "iris-command-center"
                        (when open? " iris-command-center-open"))
@@ -27,9 +27,7 @@
      [:div.iris-command-center-trigger
       {:on-click (fn [e]
                    (.stopPropagation e)
-                   (reset! command-center? (not open?)))}
-      [:div.iris-command-center-logo
-       (or logo [default-logo])]]
+                   (reset! command-center? (not open?)))}]
      ;; Content — only meaningful when open
      (when open?
        [:div.iris-command-center-content
@@ -42,8 +40,10 @@
           :on-workspaces-change    on-workspaces-change
           :on-active-position-change on-active-position-change
           :command-center?         command-center?}]
-        [start-menu/start-menu {:entity-types        entity-types
-                                :active-position     active-position
-                                :workspaces          workspaces
-                                :on-workspaces-change on-workspaces-change
-                                :on-entity-create    on-entity-create}]])]))
+        [start-menu/start-menu {:entity-types             entity-types
+                                :active-position          active-position
+                                :active-entity            active-entity
+                                :workspaces               workspaces
+                                :on-workspaces-change     on-workspaces-change
+                                :on-entity-create         on-entity-create
+                                :on-active-entity-change  on-active-entity-change}]])]))

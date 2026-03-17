@@ -31,6 +31,7 @@
         (r/as-element
           [:div.iris-color-picker-popover
            {:style {:top (+ (:bottom anchor-rect) 6) :left (:left anchor-rect)}
+            :on-pointer-down (fn [e] (.stopPropagation e))
             :on-click (fn [e] (.stopPropagation e))}
            (doall
              (for [color colors]
@@ -38,6 +39,7 @@
                [:div {:class (str "iris-color-swatch"
                                   (when (= color active-color) " iris-color-swatch-active"))
                       :style {:background color}
+                      :on-pointer-down (fn [e] (.stopPropagation e))
                       :on-click (fn [e]
                                   (.stopPropagation e)
                                   (when on-color-change (on-color-change entity-id color))
@@ -147,12 +149,13 @@
      [:div {:style {:flex-shrink 0}}
       [:div.iris-entity-tile-header-dot
        {:style    {:background tile-color}
-        :on-click (fn [e]
-                    (.stopPropagation e)
-                    (let [rect (.getBoundingClientRect (.-currentTarget e))]
-                      (reset! color-picker-rect {:top    (.-top rect)  :left   (.-left rect)
-                                                 :bottom (.-bottom rect) :width (.-width rect)}))
-                    (swap! color-picker-open? not))}]
+        :on-pointer-down (fn [e] (.stopPropagation e))
+        :on-pointer-up (fn [e]
+                         (.stopPropagation e)
+                         (let [rect (.getBoundingClientRect (.-currentTarget e))]
+                           (reset! color-picker-rect {:top    (.-top rect)  :left   (.-left rect)
+                                                      :bottom (.-bottom rect) :width (.-width rect)}))
+                         (swap! color-picker-open? not))}]
       (when @color-picker-open?
         [color-picker-popover (:entity-id node) @color-change-ref
          color-picker-open? @color-picker-rect tile-color])]
@@ -192,7 +195,7 @@
         :class          (make-tile-class focused? drag-over? dragging? is-fullscreen?)
         :style          (cond-> {:flex 1} (:color entity) (assoc "--iris-tile-color" (:color entity)))
         :on-mouse-enter (fn [_]
-                          (when (and (not focused?) @active-entity-chg-ref)
+                          (when @active-entity-chg-ref
                             (@active-entity-chg-ref (:entity-id node))))}
        [tile-header-fc {:node               node
                              :entity-name        (:name entity)
