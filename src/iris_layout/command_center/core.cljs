@@ -31,6 +31,10 @@
      ;; Content — only meaningful when open
      (when open?
        [:div.iris-command-center-content
+        {:on-click (fn [e]
+                     (when (and (= (.-target e) (.-currentTarget e))
+                                (not @mini-workspaces/dragging?))
+                       (reset! command-center? false)))}
         [mini-workspaces/workspace-grid
          {:cols                    cols
           :rows                    rows
