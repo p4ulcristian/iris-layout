@@ -188,6 +188,7 @@
                                   :color     color})
     (reset! tile/drag-ghost {:name     (:name entity)
                              :color    color
+                             :icon     (:icon entity)
                              :width    (if rect (.-width rect) 200)
                              :height   (if rect (.-height rect) 32)
                              :offset-x (when rect (- (.-clientX act-evt) (.-left rect)))
@@ -214,6 +215,20 @@
         over-id (when over (.-id over))]
     (update-tile-drop-target! over over-id)))
 
+(defn find-workspace-with-tile
+  "Find the [pos workspace] entry containing a given tile-id."
+  [workspaces tile-id]
+  (first (filter (fn [[_ ws]] (layout/find-tile (:layout ws) tile-id))
+                 workspaces)))
+
+(defn split-and-cleanup
+  "Split a target tile in a workspace and clean up the source tile."
+  [workspaces on-workspaces-change pos ws tile-id entity-id direction before? target-tile-id]
+  (when-let [new-layout (layout/split-tile (:layout ws) target-tile-id direction
+                                           entity-id (util/generate-id) (util/generate-id) before?)]
+    (on-workspaces-change
+      (tile-interactions/update-workspaces-with-cleanup workspaces pos new-layout tile-id))))
+
 (defn handle-tile-split
   "Execute a tile split when a drag is dropped onto another tile."
   [workspaces on-workspaces-change tile-id entity-id dt]
@@ -221,15 +236,10 @@
         half           (:half dt)
         direction      (tile/half->direction half)
         before?        (or (= half :left) (= half :top))]
-    (when-let [[pos ws] (first (filter (fn [[_ ws]]
-                                         (layout/find-tile (:layout ws) target-tile-id))
-                                       workspaces))]
-      (let [base-layout (or (layout/remove-tile-from-layout (:layout ws) tile-id) (:layout ws))
-            new-layout  (layout/split-tile base-layout target-tile-id direction
-                                           entity-id (util/generate-id) (util/generate-id) before?)]
-        (when new-layout
-          (on-workspaces-change
-            (tile-interactions/update-workspaces-with-cleanup workspaces pos new-layout tile-id)))))))
+    (when-not (= tile-id target-tile-id)
+      (when-let [[pos ws] (find-workspace-with-tile workspaces target-tile-id)]
+        (split-and-cleanup workspaces on-workspaces-change pos ws
+                           tile-id entity-id direction before? target-tile-id)))))
 
 (defn handle-drag-end [props-ref event]
   (let [active    (.-active event)

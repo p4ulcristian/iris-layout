@@ -268,7 +268,11 @@
                   "--iris-tile-color" (or (:color g) "#6366f1")}}
          [:div.iris-entity-tile-header
           [:div {:style {:flex-shrink 0}}
-           [:div.iris-entity-tile-header-dot
-            {:style {:background (or (:color g) "#6366f1")}}]]
+           [:div.iris-entity-tile-header-icon
+            {:style {:color (or (:color g) "#6366f1")}}
+            (if (:icon g)
+              [(:icon g)]
+              [:div.iris-entity-tile-header-dot
+               {:style {:background (or (:color g) "#6366f1")}}])]]
           [:span.iris-entity-tile-header-name (:name g)]]])
       js/document.body)))
