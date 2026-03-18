@@ -179,7 +179,7 @@ body:has(.iris-grid-viewport) {
   width: 100dvw;
   padding: var(--iris-space-md);
   position: relative;
-  background: linear-gradient(135deg, rgb(var(--iris-surface)), rgb(var(--iris-surface-raised)), rgb(60 20 80));
+  background: linear-gradient(135deg, rgb(var(--iris-surface)), rgb(var(--iris-surface-raised)), rgb(15 40 45));
   color: rgb(var(--iris-fg));
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
 }
