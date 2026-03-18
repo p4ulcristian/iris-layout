@@ -1,6 +1,7 @@
 (ns iris-layout.core
   "iris-layout — a 2D tiling workspace grid for Reagent."
-  (:require [reagent.core :as r]
+  (:require [cljs.pprint]
+            [reagent.core :as r]
             [clojure.string :as str]
             ["@dnd-kit/core" :refer [DndContext DragOverlay PointerSensor useDroppable useSensor useSensors]]
             [iris-layout.layout :as layout]
@@ -15,6 +16,52 @@
 (r/set-default-compiler! (r/create-compiler {:function-components true}))
 
 (def drag-overlay-component (r/adapt-react-class DragOverlay))
+
+(defonce debug-open? (r/atom false))
+
+(defn debug-inspector
+  "Floating state inspector — toggled with Alt+T. Shows props as EDN with copy button."
+  [props]
+  (when @debug-open?
+    (let [copied? (r/atom false)
+          edn-str (with-out-str (cljs.pprint/pprint
+                    (select-keys props [:workspaces :active-position :active-entity :entities])))]
+      [:div {:style {:position "fixed"
+                     :bottom 4 :right 4
+                     :width 280 :max-height 200
+                     :z-index 99999
+                     :background "rgb(15 20 35 / 0.92)"
+                     :border "1px solid rgb(255 255 255 / 0.1)"
+                     :border-radius 6
+                     :overflow "hidden"
+                     :display "flex"
+                     :flex-direction "column"
+                     :font-family "monospace"
+                     :font-size 9
+                     :color "rgb(255 255 255 / 0.7)"
+                     :backdrop-filter "blur(16px)"}}
+       [:div {:style {:display "flex" :align-items "center" :justify-content "space-between"
+                      :padding "3px 6px"
+                      :border-bottom "1px solid rgb(255 255 255 / 0.06)"
+                      :flex-shrink 0}}
+        [:span {:style {:font-weight 600 :font-size 9}} "state"]
+        [:div {:style {:display "flex" :gap 4}}
+         [:button {:style {:background (if @copied? "rgb(34 197 94 / 0.3)" "rgb(255 255 255 / 0.08)")
+                           :border "none" :color "rgb(255 255 255 / 0.6)"
+                           :padding "1px 6px" :border-radius 3 :cursor "pointer" :font-size 9}
+                   :on-click (fn []
+                               (.writeText js/navigator.clipboard edn-str)
+                               (reset! copied? true)
+                               (js/setTimeout #(reset! copied? false) 1500))}
+          (if @copied? "ok" "cp")]
+         [:button {:style {:background "rgb(255 255 255 / 0.08)"
+                           :border "none" :color "rgb(255 255 255 / 0.6)"
+                           :padding "1px 5px" :border-radius 3 :cursor "pointer" :font-size 9}
+                   :on-click #(reset! debug-open? false)}
+          "×"]]]
+       [:pre {:style {:margin 0 :padding "4px 6px" :overflow "auto" :flex 1
+                      :white-space "pre-wrap" :word-break "break-all" :line-height 1.3}}
+        edn-str]])))
 
 (defn dnd-context-fc
   "DndContext wrapper that configures a PointerSensor with a distance constraint,
@@ -210,6 +257,8 @@
     (reset! command-center? true))
   (when (.-altKey e)
     (case (.-code e)
+      "KeyT" (do (.preventDefault e)
+                  (swap! debug-open? not))
       "KeyW" (when-let [props @props-ref]
                (.preventDefault e)
                (reset! command-center? false)
@@ -315,4 +364,5 @@
                 :on-entity-create        (:on-entity-create props)
                 :on-active-entity-change (:on-active-entity-change props)
                 :command-center?         command-center?
-                :logo                    logo}]])}]]))))
+                :logo                    logo}]])}]
+         [debug-inspector props]]))))
