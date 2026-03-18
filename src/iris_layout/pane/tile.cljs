@@ -92,49 +92,26 @@
 ;; Set by DndContext.onDragMove in core.cljs: {:tile-id "..." :half :left}
 (def drop-target (r/atom nil))
 
-(defn flip-ref-callback
-  "Returns a React ref callback that kicks off a FLIP animation when the tile enters fullscreen."
-  [tile-ref is-fullscreen?]
-  (fn [el]
-    (reset! tile-ref el)
-    (when (and el is-fullscreen? @fullscreen-rect)
-      (let [{:keys [top left width height]} @fullscreen-rect
-            sx (/ width (.-innerWidth js/window))
-            sy (/ height (.-innerHeight js/window))]
-        (set! (.-transform (.-style el))
-              (str "translate(" left "px, " top "px) scale(" sx ", " sy ")"))
-        (js/requestAnimationFrame
-          (fn []
-            (js/requestAnimationFrame
-              (fn []
-                (set! (.-transform (.-style el)) "none")
-                (reset! fullscreen-rect nil)))))))))
-
 (defn toggle-fullscreen!
-  "Toggle fullscreen state for a tile, capturing the pre-fullscreen rect for FLIP animation."
-  [tile-ref node]
+  "Toggle fullscreen state for a tile."
+  [node]
   (if (= @fullscreen-tile (:id node))
     (do (reset! fullscreen-rect nil)
         (reset! fullscreen-tile nil))
-    (do (when-let [el @tile-ref]
-          (let [rect (.getBoundingClientRect el)]
-            (reset! fullscreen-rect {:top    (.-top rect) :left   (.-left rect)
-                                     :width  (.-width rect) :height (.-height rect)})))
-        (reset! fullscreen-tile (:id node)))))
+    (reset! fullscreen-tile (:id node))))
 
 (defn make-tile-class
   "Build the CSS class string for the root tile div based on current state."
-  [focused? drag-over? dragging? is-fullscreen?]
+  [focused? drag-over? dragging?]
   (str "iris-entity-tile"
        (when focused? " iris-entity-tile-focused")
        (when (not focused?) " iris-entity-tile-unfocused")
        (when drag-over? " iris-drag-over")
-       (when dragging? " iris-dragging")
-       (when is-fullscreen? " iris-entity-tile-fullscreen")))
+       (when dragging? " iris-dragging")))
 
 (defn tile-header-fc
   "Draggable tile header — uses useDraggable to initiate a dnd-kit drag gesture."
-  [{:keys [node entity-name tile-color close-ref
+  [{:keys [node entity-name entity-icon tile-color close-ref
            color-picker-open? color-picker-rect color-change-ref tile-ref]}]
   (let [result    (useDraggable #js {:id   (:id node)
                                      :data #js {:tile_id   (:id node)
@@ -144,18 +121,22 @@
         attrs     (js->clj (.-attributes result) :keywordize-keys true)]
     [:div.iris-entity-tile-header
      (merge {:ref             (fn [el] (reset! tile-ref el) (set-ref el))
-             :on-double-click (fn [_] (toggle-fullscreen! tile-ref node))}
+             :on-double-click (fn [_] (toggle-fullscreen! node))}
             listeners attrs)
      [:div {:style {:flex-shrink 0}}
-      [:div.iris-entity-tile-header-dot
-       {:style    {:background tile-color}
+      [:div.iris-entity-tile-header-icon
+       {:style    {:color tile-color}
         :on-pointer-down (fn [e] (.stopPropagation e))
         :on-pointer-up (fn [e]
                          (.stopPropagation e)
                          (let [rect (.getBoundingClientRect (.-currentTarget e))]
                            (reset! color-picker-rect {:top    (.-top rect)  :left   (.-left rect)
                                                       :bottom (.-bottom rect) :width (.-width rect)}))
-                         (swap! color-picker-open? not))}]
+                         (swap! color-picker-open? not))}
+       (if entity-icon
+         [entity-icon]
+         [:div.iris-entity-tile-header-dot
+          {:style {:background tile-color}}])]
       (when @color-picker-open?
         [color-picker-popover (:entity-id node) @color-change-ref
          color-picker-open? @color-picker-rect tile-color])]
@@ -187,28 +168,58 @@
           dt           @drop-target
           drag-over?   (= (:tile-id dt) (:id node))
           dragging?    (= @dragging-tile (:id node))]
-      [:div
-       {:ref            (fn [el]
-                          ((flip-ref-callback tile-ref is-fullscreen?) el)
-                          (set-drop-ref el))
-        :data-tile-id   (:id node)
-        :class          (make-tile-class focused? drag-over? dragging? is-fullscreen?)
-        :style          (cond-> {:flex 1} (:color entity) (assoc "--iris-tile-color" (:color entity)))
-        :on-mouse-enter (fn [_]
-                          (when @active-entity-chg-ref
-                            (@active-entity-chg-ref (:entity-id node))))}
-       [tile-header-fc {:node               node
-                             :entity-name        (:name entity)
-                             :tile-color         tile-color
-                             :close-ref          close-ref
-                             :color-picker-open? color-picker-open?
-                             :color-picker-rect  color-picker-rect
-                             :color-change-ref   color-change-ref
-                             :tile-ref           tile-ref}]
-       [:div.iris-entity-tile-content
-        (when render-entity-tile
-          [render-entity-tile (or entity {:id (:entity-id node)})])]
-       [drop-indicator (when drag-over? (:half dt)) drag-over?]])))
+      [:<>
+       [:div
+        {:ref            (fn [el]
+                           (reset! tile-ref el)
+                           (set-drop-ref el))
+         :data-tile-id   (:id node)
+         :class          (make-tile-class focused? drag-over? dragging?)
+         :style          (cond-> {:flex 1}
+                           (:color entity) (assoc "--iris-tile-color" (:color entity))
+                           is-fullscreen? (assoc :visibility "hidden"))
+         :on-mouse-enter (fn [_]
+                           (when @active-entity-chg-ref
+                             (@active-entity-chg-ref (:entity-id node))))}
+        [:div.iris-tile-ca]
+        [:div.iris-tile-specular]
+        [tile-header-fc {:node               node
+                              :entity-name        (:name entity)
+                              :entity-icon        (:icon entity)
+                              :tile-color         tile-color
+                              :close-ref          close-ref
+                              :color-picker-open? color-picker-open?
+                              :color-picker-rect  color-picker-rect
+                              :color-change-ref   color-change-ref
+                              :tile-ref           tile-ref}]
+        (when-not is-fullscreen?
+          [:div.iris-entity-tile-content
+           (when render-entity-tile
+             [render-entity-tile (or entity {:id (:entity-id node)})])])
+        [drop-indicator (when drag-over? (:half dt)) drag-over?]]
+       (when is-fullscreen?
+         (react-dom/createPortal
+           (r/as-element
+             [:div.iris-fullscreen-overlay
+              {:style {"--iris-tile-color" tile-color}
+               :on-double-click (fn [_]
+                                  (reset! fullscreen-tile nil)
+                                  (reset! fullscreen-rect nil))}
+              [:div.iris-fullscreen-overlay-header
+               [:div.iris-entity-tile-header-dot
+                {:style {:background tile-color}}]
+               [:span.iris-entity-tile-header-name (:name entity)]
+               [:button.iris-entity-tile-header-close
+                {:on-pointer-down (fn [e] (.stopPropagation e))
+                 :on-click (fn [e]
+                             (.stopPropagation e)
+                             (reset! fullscreen-tile nil)
+                             (reset! fullscreen-rect nil))}
+                "\u00d7"]]
+              [:div.iris-entity-tile-content
+               (when render-entity-tile
+                 [render-entity-tile (or entity {:id (:entity-id node)})])]])
+           js/document.body))])))
 
 (defn drag-ghost-portal []
   (when-let [g @drag-ghost]

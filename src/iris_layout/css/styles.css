@@ -12,15 +12,97 @@
    - .iris-drop-*              Drop indicator overlay
    ============================================================ */
 
-/* --- Global: disable text selection across all layout elements --- */
+/* --- Registered custom properties (Chrome GPU interpolation) --- */
 
+@property --iris-tile-color {
+  syntax: "<color>";
+  inherits: false;
+  initial-value: #6366f1;
+}
+
+@property --iris-specular-x {
+  syntax: "<percentage>";
+  inherits: false;
+  initial-value: 50%;
+}
+
+@property --iris-specular-y {
+  syntax: "<percentage>";
+  inherits: false;
+  initial-value: 0%;
+}
+
+/* --- Design tokens --- */
+
+:root {
+  /* Base surface color (dark navy/slate) */
+  --iris-surface: 15 20 35;
+  /* Popover/picker surface (slightly lighter) */
+  --iris-surface-raised: 20 25 40;
+  /* Drag overlay base */
+  --iris-surface-overlay: #1e1e2e;
+  /* Pure black for scrim/overlay */
+  --iris-black: 0 0 0;
+  /* Accent color (indigo) */
+  --iris-accent: 99 102 241;
+  /* Danger color (red) */
+  --iris-danger: 239 68 68;
+  /* Active/highlight color (amber) */
+  --iris-active: 234 179 8;
+  /* Foreground (text) */
+  --iris-fg: 255 255 255;
+  /* Default tile color */
+  --iris-tile-color-default: #6366f1;
+  /* Border radius */
+  --iris-radius-sm: 4px;
+  --iris-radius-md: 6px;
+  --iris-radius-lg: 8px;
+  --iris-radius-xl: 12px;
+  /* Spacing */
+  --iris-space-xs: 2px;
+  --iris-space-sm: 4px;
+  --iris-space-md: 8px;
+  --iris-space-lg: 16px;
+  /* Font sizes */
+  --iris-text-xs: 7px;
+  --iris-text-sm: 9px;
+  --iris-text-md: 11px;
+  --iris-text-base: 12px;
+  --iris-text-lg: 14px;
+  --iris-text-xl: 16px;
+  --iris-text-2xl: 20px;
+  --iris-text-3xl: 24px;
+  /* Background blobs */
+  --iris-blob-opacity: 0.4;
+  --iris-blob-1: #b893ff;
+  --iris-blob-2: #ffa6c1;
+  --iris-blob-3: #93c5ff;
+  --iris-blob-4: #a7f3d0;
+  --iris-blob-5: #ffd693;
+  --iris-blob-6: #c4a7ff;
+  /* Transitions */
+  --iris-ease-default: 150ms ease;
+  --iris-ease-smooth: 200ms ease;
+  --iris-ease-spring: 300ms cubic-bezier(0.22, 1, 0.36, 1);
+  --iris-ease-snappy: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* --- Reset body margin so viewport sits flush --- */
+body:has(.iris-grid-viewport) {
+  margin: 0;
+}
+
+/* --- Global: box-sizing and text selection --- */
+
+.iris-grid-viewport,
+.iris-grid-viewport *,
 .iris-body,
 .iris-body *,
 .iris-sidebar,
 .iris-sidebar * {
-  -webkit-user-select: none;
-  user-select: none;
-  -webkit-touch-callout: none;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
 /* --- Body --- */
@@ -31,7 +113,7 @@
   overflow: hidden;
   min-width: 0;
   min-height: 0;
-  padding: 16px;
+  padding: var(--iris-space-lg);
 }
 
 .iris-body-stage {
@@ -81,9 +163,35 @@
   align-items: center;
   justify-content: center;
   flex: 1;
-  color: rgba(255,255,255,0.2);
-  font-size: 24px;
+  color: rgb(var(--iris-fg) / 0.2);
+  font-size: var(--iris-text-3xl);
   font-weight: 300;
+}
+
+/* --- Pastel background blobs --- */
+
+@keyframes iris-blob-drift-1 {
+  0%   { transform: translate(0%, 0%) scale(1); }
+  25%  { transform: translate(15%, -20%) scale(1.1); }
+  50%  { transform: translate(-10%, 15%) scale(0.95); }
+  75%  { transform: translate(20%, 10%) scale(1.05); }
+  100% { transform: translate(0%, 0%) scale(1); }
+}
+
+@keyframes iris-blob-drift-2 {
+  0%   { transform: translate(0%, 0%) scale(1); }
+  25%  { transform: translate(-20%, 10%) scale(1.08); }
+  50%  { transform: translate(10%, -15%) scale(0.92); }
+  75%  { transform: translate(-15%, -10%) scale(1.12); }
+  100% { transform: translate(0%, 0%) scale(1); }
+}
+
+@keyframes iris-blob-drift-3 {
+  0%   { transform: translate(0%, 0%) scale(1); }
+  25%  { transform: translate(10%, 20%) scale(0.9); }
+  50%  { transform: translate(-20%, -10%) scale(1.1); }
+  75%  { transform: translate(5%, -20%) scale(1.05); }
+  100% { transform: translate(0%, 0%) scale(1); }
 }
 
 /* --- Grid viewport (camera-based navigation) --- */
@@ -94,7 +202,45 @@
   overflow: hidden;
   min-width: 0;
   min-height: 0;
-  padding: 6px;
+  height: 100dvh;
+  width: 100dvw;
+  padding: var(--iris-space-md);
+  position: relative;
+  background: linear-gradient(135deg, rgb(var(--iris-surface)), rgb(var(--iris-surface-raised)));
+  color: rgb(var(--iris-fg));
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+}
+
+.iris-grid-viewport::before,
+.iris-grid-viewport::after {
+  content: "";
+  position: absolute;
+  inset: -100px;
+  pointer-events: none;
+  z-index: 0;
+  filter: blur(100px);
+  opacity: var(--iris-blob-opacity, 0.4);
+}
+
+.iris-grid-viewport::before {
+  background:
+    radial-gradient(circle 400px at 15% 20%, var(--iris-blob-1, #b893ff), transparent 70%),
+    radial-gradient(circle 350px at 80% 65%, var(--iris-blob-2, #ffa6c1), transparent 70%),
+    radial-gradient(circle 380px at 45% 45%, var(--iris-blob-3, #93c5ff), transparent 70%);
+  animation: iris-blob-drift-1 25s ease-in-out infinite;
+}
+
+.iris-grid-viewport::after {
+  background:
+    radial-gradient(circle 320px at 75% 20%, var(--iris-blob-4, #a7f3d0), transparent 70%),
+    radial-gradient(circle 360px at 20% 80%, var(--iris-blob-5, #ffd693), transparent 70%),
+    radial-gradient(circle 300px at 55% 75%, var(--iris-blob-6, #c4a7ff), transparent 70%);
+  animation: iris-blob-drift-2 30s ease-in-out infinite;
+}
+
+.iris-grid-viewport > * {
+  position: relative;
+  z-index: 1;
 }
 
 .iris-grid-center {
@@ -107,7 +253,7 @@
 .iris-grid-canvas {
   position: absolute;
   display: grid;
-  gap: var(--iris-grid-gap, 16px);
+  gap: var(--iris-grid-gap, var(--iris-space-lg));
   transition: transform 400ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -131,9 +277,18 @@
   align-items: center;
   justify-content: center;
   padding: 0;
-  background: rgba(0, 0, 0, 0.35);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  background: rgb(0 0 0 / 0.25);
+  backdrop-filter:
+    url(#iris-glass-distort)
+    blur(20px)
+    brightness(1.05)
+    contrast(0.93)
+    saturate(1.6);
+  -webkit-backdrop-filter:
+    blur(20px)
+    brightness(1.05)
+    contrast(0.93)
+    saturate(1.6);
   clip-path: circle(44px at 0px 100%);
   transition: clip-path 700ms cubic-bezier(0.22, 1, 0.36, 1);
   pointer-events: none;
@@ -162,11 +317,11 @@
   position: absolute;
   bottom: 12px;
   left: 12px;
-  color: rgba(255, 255, 255, 0.7);
-  font-size: 20px;
+  color: rgb(var(--iris-fg) / 0.7);
+  font-size: var(--iris-text-2xl);
   line-height: 1;
   pointer-events: none;
-  transition: opacity 200ms ease;
+  transition: opacity var(--iris-ease-smooth);
 }
 
 .iris-command-center-open .iris-command-center-logo {
@@ -175,9 +330,9 @@
 
 .iris-command-center-grid {
   display: grid;
-  gap: 8px;
+  gap: var(--iris-space-md);
   margin: auto;
-  padding: 16px;
+  padding: var(--iris-space-lg);
   width: fit-content;
   max-width: calc(100% - 32px);
   max-height: calc(100% - 100px);
@@ -187,13 +342,21 @@
 
 .iris-command-center-cell {
   position: relative;
-  border-radius: 8px;
+  border-radius: var(--iris-radius-lg);
   overflow: hidden;
   cursor: pointer;
   aspect-ratio: 16 / 9;
-  border: 2px solid rgba(255, 255, 255, 0.1);
-  background: rgba(15, 20, 35, 0.8);
-  transition: border-color 200ms ease, box-shadow 200ms ease;
+  backdrop-filter: blur(12px) brightness(1.06) contrast(0.94) saturate(1.4);
+  -webkit-backdrop-filter: blur(12px) brightness(1.06) contrast(0.94) saturate(1.4);
+  background: rgb(var(--iris-surface) / 0.2);
+  border: 1px solid rgb(var(--iris-fg) / 0.08);
+  border-top-color: rgb(var(--iris-fg) / 0.18);
+  border-left-color: rgb(var(--iris-fg) / 0.12);
+  box-shadow:
+    0 1px 0 0 rgb(var(--iris-fg) / 0.12) inset,
+    0 -1px 0 0 rgb(0 0 0 / 0.2) inset,
+    0 4px 16px rgb(0 0 0 / 0.25);
+  transition: border-color var(--iris-ease-smooth), box-shadow var(--iris-ease-smooth);
   display: flex;
   padding: 3px;
   gap: 2px;
@@ -202,23 +365,26 @@
 }
 
 .iris-command-center-cell:hover {
-  border-color: rgba(255, 255, 255, 0.3);
-  box-shadow: 0 0 16px rgba(99, 102, 241, 0.3);
+  border-top-color: rgb(var(--iris-fg) / 0.25);
+  box-shadow:
+    0 1px 0 0 rgb(var(--iris-fg) / 0.18) inset,
+    0 -1px 0 0 rgb(0 0 0 / 0.25) inset,
+    0 8px 24px rgb(0 0 0 / 0.35);
 }
 
 .iris-command-center-cell-active {
-  border-color: rgba(234, 179, 8, 0.6);
-  box-shadow: 0 0 24px rgba(234, 179, 8, 0.4);
+  border-color: rgb(var(--iris-active) / 0.3);
+  border-top-color: rgb(var(--iris-active) / 0.5);
 }
 
 .iris-command-center-cell-drop-target {
-  border-color: rgba(99, 102, 241, 0.5);
+  border-color: rgb(var(--iris-accent) / 0.5);
   border-style: dashed;
 }
 
 .iris-command-center-cell-drop-target:hover {
-  border-color: rgba(99, 102, 241, 0.8);
-  background: rgba(99, 102, 241, 0.1);
+  border-color: rgb(var(--iris-accent) / 0.8);
+  background: rgb(var(--iris-accent) / 0.1);
 }
 
 .iris-command-center-split {
@@ -244,21 +410,23 @@
 }
 
 .iris-command-center-tile {
-  --_color: var(--iris-tile-color, #6366f1);
+  --_color: var(--iris-tile-color, var(--iris-tile-color-default));
   position: relative;
   flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: color-mix(in srgb, var(--_color) 20%, rgba(15, 20, 35, 0.8));
-  border-radius: 4px;
+  background: color-mix(in srgb, var(--_color) 15%, transparent);
+  border-radius: var(--iris-radius-sm);
   overflow: hidden;
   cursor: pointer;
+  border: 1px solid rgb(var(--iris-fg) / 0.06);
+  border-top-color: rgb(var(--iris-fg) / 0.12);
 }
 
 .iris-command-center-tile-name {
-  font-size: 9px;
-  color: rgba(255, 255, 255, 0.5);
+  font-size: var(--iris-text-sm);
+  color: rgb(var(--iris-fg) / 0.5);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -267,13 +435,13 @@
 
 .iris-command-center-tile-close {
   position: absolute;
-  top: 2px;
-  right: 2px;
+  top: var(--iris-space-xs);
+  right: var(--iris-space-xs);
   z-index: 2;
   border: none;
-  background: rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.5);
-  font-size: 14px;
+  background: rgb(var(--iris-fg) / 0.1);
+  color: rgb(var(--iris-fg) / 0.5);
+  font-size: var(--iris-text-lg);
   width: 22px;
   height: 22px;
   line-height: 1;
@@ -282,12 +450,12 @@
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  transition: color 150ms ease, background 150ms ease;
+  transition: color var(--iris-ease-default), background var(--iris-ease-default);
 }
 
 .iris-command-center-tile-close:hover {
-  background: rgba(239, 68, 68, 0.7);
-  color: #fff;
+  background: rgb(var(--iris-danger) / 0.7);
+  color: rgb(var(--iris-fg));
 }
 
 /* Command Center layout wrapper */
@@ -314,8 +482,8 @@
 /* Entity palette — dock at bottom, wall to wall */
 .iris-command-center-palette {
   display: flex;
-  gap: 6px;
-  padding: 12px;
+  gap: var(--iris-space-md);
+  padding: var(--iris-space-lg);
   margin-top: auto;
   width: 100%;
   overflow-x: auto;
@@ -324,26 +492,36 @@
 }
 
 .iris-command-center-palette-item {
-  --_color: var(--iris-tile-color, #6366f1);
+  --_color: var(--iris-tile-color, var(--iris-tile-color-default));
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: var(--iris-space-sm);
   width: 48px;
   height: 48px;
-  background: color-mix(in srgb, var(--_color) 15%, rgba(15, 20, 35, 0.85));
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
+  backdrop-filter: blur(12px) brightness(1.06) contrast(0.94) saturate(1.4);
+  -webkit-backdrop-filter: blur(12px) brightness(1.06) contrast(0.94) saturate(1.4);
+  background: color-mix(in srgb, var(--_color) 15%, transparent);
+  border: 1px solid rgb(var(--iris-fg) / 0.08);
+  border-top-color: rgb(var(--iris-fg) / 0.18);
+  border-left-color: rgb(var(--iris-fg) / 0.12);
+  border-radius: var(--iris-radius-lg);
   cursor: pointer;
   flex-shrink: 0;
-  transition: border-color 200ms ease, background 200ms ease, box-shadow 200ms ease, transform 150ms ease;
+  box-shadow:
+    0 1px 0 0 rgb(var(--iris-fg) / 0.10) inset,
+    0 -1px 0 0 rgb(0 0 0 / 0.15) inset,
+    0 4px 12px rgb(0 0 0 / 0.2);
+  transition: border-color var(--iris-ease-smooth), box-shadow var(--iris-ease-smooth), transform var(--iris-ease-default);
 }
 
 .iris-command-center-palette-item:hover {
-  border-color: color-mix(in srgb, var(--_color) 60%, white);
-  background: color-mix(in srgb, var(--_color) 25%, rgba(15, 20, 35, 0.9));
-  box-shadow: 0 0 12px color-mix(in srgb, var(--_color) 40%, transparent);
+  border-top-color: color-mix(in srgb, var(--_color) 50%, rgb(var(--iris-fg) / 0.3));
+  box-shadow:
+    0 1px 0 0 rgb(var(--iris-fg) / 0.16) inset,
+    0 -1px 0 0 rgb(0 0 0 / 0.2) inset,
+    0 8px 20px rgb(0 0 0 / 0.3);
   transform: scale(1.08);
 }
 
@@ -355,8 +533,8 @@
 }
 
 .iris-command-center-palette-name {
-  font-size: 7px;
-  color: rgba(255, 255, 255, 0.6);
+  font-size: var(--iris-text-xs);
+  color: rgb(var(--iris-fg) / 0.6);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -411,7 +589,7 @@
 .iris-entity-tile-group {
   display: flex;
   flex: 1;
-  gap: 4px;
+  gap: var(--iris-space-sm);
   position: relative;
   min-height: 0;
   min-width: 0;
@@ -442,91 +620,142 @@
 /* --- Entity tile --- */
 
 .iris-entity-tile {
-  --_color: var(--iris-tile-color, #6366f1);
+  --_color: var(--iris-tile-color, var(--iris-tile-color-default));
+
   position: relative;
-  border-radius: 12px;
+  border-radius: var(--iris-radius-xl);
   overflow: hidden;
-  backdrop-filter: blur(15px) saturate(180%);
-  background:
-    linear-gradient(135deg,
-      color-mix(in srgb, var(--_color) 25%, transparent),
-      color-mix(in srgb, var(--_color) 10%, transparent)),
-    rgba(15, 20, 35, 0.55);
-  border: none;
+  isolation: isolate;
+
+  /* url() displacement runs first on raw backdrop pixels,
+     then blur, then optical corrections */
+  backdrop-filter:
+    url(#iris-glass-distort)
+    blur(24px)
+    brightness(1.08)
+    contrast(0.92)
+    saturate(1.8);
+  -webkit-backdrop-filter:
+    blur(24px)
+    brightness(1.08)
+    contrast(0.92)
+    saturate(1.8);
+
+  /* Flat tint — no gradient. color-mix keeps it physical */
+  background: color-mix(in srgb, var(--_color) 18%, transparent);
+
+  /* Asymmetric — light hits from top-left, tinted by tile color */
+  border-top:    1px solid color-mix(in srgb, var(--_color) 60%, rgb(var(--iris-fg) / 0.4));
+  border-left:   1px solid color-mix(in srgb, var(--_color) 40%, rgb(var(--iris-fg) / 0.2));
+  border-right:  1px solid color-mix(in srgb, var(--_color) 20%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--_color) 10%, transparent);
+
   box-shadow:
-    0 2px 8px rgba(0,0,0,0.25),
-    0 8px 24px rgba(0,0,0,0.2),
-    0 16px 48px rgba(0,0,0,0.15),
-    inset 0 1px 0 color-mix(in srgb, var(--_color) 15%, rgba(255,255,255,0.1));
-  transition: transform 300ms cubic-bezier(0.22, 1, 0.36, 1),
-              opacity 200ms ease,
-              box-shadow 200ms ease;
+    /* top rim catch-light */
+    0 1px 0 0 rgb(var(--iris-fg) / 0.22) inset,
+    /* left rim */
+    1px 0 0 0 rgb(var(--iris-fg) / 0.10) inset,
+    /* bottom inner depth */
+    0 -1px 0 0 rgb(0 0 0 / 0.30) inset,
+    /* depth */
+    0 16px 60px rgb(0 0 0 / 0.45),
+    0 4px 12px rgb(0 0 0 / 0.25);
+
+  transition:
+    transform var(--iris-ease-spring),
+    box-shadow var(--iris-ease-smooth),
+    opacity var(--iris-ease-smooth);
+
   display: flex;
   flex-direction: column;
-  -webkit-touch-callout: none;
-  -webkit-user-select: none;
-  user-select: none;
 }
 
-/* Gradient border via mask-composite */
+/* Thin-film iridescence — mix-blend-mode:screen, NOT a shine gradient */
 .iris-entity-tile::before {
   content: "";
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  padding: 1px;
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--_color) 60%, white) 0%,
-    color-mix(in srgb, var(--_color) 35%, transparent) 50%,
-    transparent 70%
+  mix-blend-mode: screen;
+  opacity: 0.06;
+  background: radial-gradient(
+    ellipse at 25% 0%,
+    var(--_color) 0%,
+    transparent 65%
   );
-  -webkit-mask:
-    linear-gradient(#fff 0 0) content-box,
-    linear-gradient(#fff 0 0);
-  mask:
-    linear-gradient(#fff 0 0) content-box,
-    linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
   pointer-events: none;
   z-index: 1;
 }
 
-/* Noise texture overlay */
+/* Single 1px top-edge glint — NOT a gradient fill over the top half */
 .iris-entity-tile::after {
   content: "";
   position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  opacity: 0.03;
-  mix-blend-mode: overlay;
+  top: 0;
+  left: 8%;
+  right: 8%;
+  height: 1px;
+  opacity: 0.55;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgb(var(--iris-fg) / 0.8),
+    transparent
+  );
   pointer-events: none;
   z-index: 2;
 }
 
 .iris-entity-tile:hover {
   box-shadow:
-    0 2px 8px rgba(0,0,0,0.25),
-    0 8px 24px rgba(0,0,0,0.2),
-    0 16px 48px rgba(0,0,0,0.15),
-    0 0 24px color-mix(in srgb, var(--_color) 35%, transparent),
-    inset 0 1px 0 color-mix(in srgb, var(--_color) 18%, rgba(255,255,255,0.12));
+    0 1px 0 0 rgb(var(--iris-fg) / 0.30) inset,
+    1px 0 0 0 rgb(var(--iris-fg) / 0.14) inset,
+    0 -1px 0 0 rgb(0 0 0 / 0.35) inset,
+    0 30px 80px rgb(0 0 0 / 0.55),
+    0 8px 24px rgb(0 0 0 / 0.30);
 }
 
 .iris-entity-tile-focused {
-  box-shadow:
-    0 2px 8px rgba(0,0,0,0.25),
-    0 8px 24px rgba(0,0,0,0.2),
-    0 16px 48px rgba(0,0,0,0.15),
-    0 0 40px color-mix(in srgb, var(--_color) 55%, transparent),
-    inset 0 1px 0 color-mix(in srgb, var(--_color) 20%, rgba(255,255,255,0.12));
   z-index: 10;
 }
 
 .iris-entity-tile-unfocused {
-  /* Placeholder — user can style unfocused tiles */
+  opacity: 0.85;
+}
+
+/* --- Chromatic aberration edge (top of tile) --- */
+.iris-tile-ca {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 40%;
+  border-radius: inherit;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--_color) 12%, transparent) 0%,
+    transparent 100%
+  );
+  mix-blend-mode: color-dodge;
+  opacity: 0.08;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* --- Specular highlight (mouse-trackable via --iris-specular-x/y) --- */
+.iris-tile-specular {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(
+    ellipse 60% 40% at var(--iris-specular-x, 50%) var(--iris-specular-y, 0%),
+    rgb(var(--iris-fg) / 0.08) 0%,
+    transparent 70%
+  );
+  mix-blend-mode: screen;
+  pointer-events: none;
+  z-index: 1;
+  transition: --iris-specular-x 0.3s ease, --iris-specular-y 0.3s ease;
 }
 
 /* --- Entity tile header --- */
@@ -536,14 +765,11 @@
   z-index: 3;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 10px;
-  background: color-mix(in srgb, var(--_color) 20%, rgba(255,255,255,0.04));
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
+  gap: var(--iris-space-md);
+  padding: var(--iris-space-md) 10px;
+  background: rgb(var(--iris-fg) / 0.03);
+  box-shadow: inset 0 -1px 0 rgb(var(--iris-fg) / 0.06);
   cursor: grab;
-  user-select: none;
-  -webkit-user-select: none;
-  -webkit-touch-callout: none;
   flex-shrink: 0;
   touch-action: none;
 }
@@ -553,16 +779,30 @@
 }
 
 .iris-entity-tile-header-name {
-  font-size: 12px;
+  font-size: var(--iris-text-base);
   font-weight: 500;
-  color: rgba(255,255,255,0.7);
+  color: rgb(var(--iris-fg) / 0.7);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   flex: 1;
 }
 
-/* --- Color dot & picker --- */
+/* --- Icon, color dot & picker --- */
+
+.iris-entity-tile-header-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  cursor: pointer;
+  font-size: var(--iris-text-base);
+  transition: transform var(--iris-ease-default);
+}
+
+.iris-entity-tile-header-icon:hover {
+  transform: scale(1.15);
+}
 
 .iris-entity-tile-header-dot {
   width: 10px;
@@ -570,13 +810,13 @@
   border-radius: 50%;
   flex-shrink: 0;
   cursor: pointer;
-  transition: transform 150ms ease, box-shadow 150ms ease;
-  box-shadow: 0 0 0 1px rgba(255,255,255,0.15);
+  transition: transform var(--iris-ease-default), box-shadow var(--iris-ease-default);
+  box-shadow: 0 0 0 1px rgb(var(--iris-fg) / 0.15);
 }
 
 .iris-entity-tile-header-dot:hover {
   transform: scale(1.3);
-  box-shadow: 0 0 0 2px rgba(255,255,255,0.3);
+  box-shadow: 0 0 0 2px rgb(var(--iris-fg) / 0.3);
 }
 
 .iris-color-picker-popover {
@@ -586,11 +826,11 @@
   grid-template-columns: repeat(6, 1fr);
   gap: 10px;
   padding: 10px;
-  background: rgba(20, 25, 40, 0.95);
+  background: rgb(var(--iris-surface-raised) / 0.95);
   backdrop-filter: blur(12px);
-  border: 1px solid rgba(255,255,255,0.12);
-  border-radius: 8px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  border: 1px solid rgb(var(--iris-fg) / 0.12);
+  border-radius: var(--iris-radius-lg);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.4);
   z-index: 10000;
 }
 
@@ -599,35 +839,35 @@
   height: 32px;
   border-radius: 50%;
   cursor: pointer;
-  transition: transform 150ms ease, box-shadow 150ms ease;
-  box-shadow: 0 0 0 1px rgba(255,255,255,0.1);
+  transition: transform var(--iris-ease-default), box-shadow var(--iris-ease-default);
+  box-shadow: 0 0 0 1px rgb(var(--iris-fg) / 0.1);
 }
 
 .iris-color-swatch:hover {
   transform: scale(1.15);
-  box-shadow: 0 0 0 2px rgba(255,255,255,0.4);
+  box-shadow: 0 0 0 2px rgb(var(--iris-fg) / 0.4);
 }
 
 .iris-color-swatch-active,
 .iris-color-swatch-active:hover {
-  box-shadow: 0 0 0 3px rgba(20, 25, 40, 0.95), 0 0 0 5px rgba(255,255,255,0.8);
+  box-shadow: 0 0 0 3px rgb(var(--iris-surface-raised) / 0.95), 0 0 0 5px rgb(var(--iris-fg) / 0.8);
   transform: scale(1.15);
 }
 
 .iris-entity-tile-header-close {
   background: none;
   border: none;
-  color: rgba(255,255,255,0.3);
-  font-size: 16px;
+  color: rgb(var(--iris-fg) / 0.3);
+  font-size: var(--iris-text-xl);
   line-height: 1;
   cursor: pointer;
-  padding: 0 2px;
-  transition: color 150ms ease;
+  padding: 0 var(--iris-space-xs);
+  transition: color var(--iris-ease-default);
   flex-shrink: 0;
 }
 
 .iris-entity-tile-header-close:hover {
-  color: rgba(255,255,255,0.9);
+  color: rgb(var(--iris-fg) / 0.9);
 }
 
 .iris-entity-tile-content {
@@ -640,27 +880,37 @@
 }
 
 .iris-fullscreen-overlay {
-  --_color: var(--iris-tile-color, #6366f1);
-  position: absolute;
+  --_color: var(--iris-tile-color, var(--iris-tile-color-default));
+  position: fixed;
   inset: 0;
-  z-index: 50;
+  z-index: 10000;
   display: flex;
   flex-direction: column;
-  border-radius: 12px;
+  border-radius: var(--iris-radius-xl);
   overflow: hidden;
-  backdrop-filter: blur(15px) saturate(180%);
-  background:
-    linear-gradient(135deg,
-      color-mix(in srgb, var(--_color) 25%, transparent),
-      color-mix(in srgb, var(--_color) 10%, transparent)),
-    rgba(15, 20, 35, 0.7);
-  border: none;
+  isolation: isolate;
+  backdrop-filter:
+    url(#iris-glass-distort)
+    blur(24px)
+    brightness(1.08)
+    contrast(0.92)
+    saturate(1.8);
+  -webkit-backdrop-filter:
+    blur(24px)
+    brightness(1.08)
+    contrast(0.92)
+    saturate(1.8);
+  background: color-mix(in srgb, var(--_color) 22%, transparent);
+  border-top:    1px solid color-mix(in srgb, var(--_color) 60%, rgb(var(--iris-fg) / 0.4));
+  border-left:   1px solid color-mix(in srgb, var(--_color) 40%, rgb(var(--iris-fg) / 0.2));
+  border-right:  1px solid color-mix(in srgb, var(--_color) 20%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--_color) 10%, transparent);
   box-shadow:
-    0 2px 8px rgba(0,0,0,0.25),
-    0 8px 24px rgba(0,0,0,0.2),
-    0 16px 48px rgba(0,0,0,0.15),
-    0 0 40px color-mix(in srgb, var(--_color) 55%, transparent),
-    inset 0 1px 0 color-mix(in srgb, var(--_color) 15%, rgba(255,255,255,0.1));
+    0 1px 0 0 rgb(var(--iris-fg) / 0.22) inset,
+    1px 0 0 0 rgb(var(--iris-fg) / 0.10) inset,
+    0 -1px 0 0 rgb(0 0 0 / 0.30) inset,
+    0 16px 60px rgb(0 0 0 / 0.45),
+    0 4px 12px rgb(0 0 0 / 0.25);
 }
 
 .iris-fullscreen-overlay::before {
@@ -668,21 +918,9 @@
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  padding: 1px;
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--_color) 60%, white) 0%,
-    color-mix(in srgb, var(--_color) 35%, transparent) 50%,
-    transparent 70%
-  );
-  -webkit-mask:
-    linear-gradient(#fff 0 0) content-box,
-    linear-gradient(#fff 0 0);
-  mask:
-    linear-gradient(#fff 0 0) content-box,
-    linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
+  mix-blend-mode: screen;
+  opacity: 0.06;
+  background: radial-gradient(ellipse at 25% 0%, var(--_color) 0%, transparent 65%);
   pointer-events: none;
   z-index: 1;
 }
@@ -692,13 +930,11 @@
   z-index: 3;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 10px;
-  background: color-mix(in srgb, var(--_color) 20%, rgba(255,255,255,0.04));
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
+  gap: var(--iris-space-md);
+  padding: var(--iris-space-md) 10px;
+  background: rgb(var(--iris-fg) / 0.03);
+  box-shadow: inset 0 -1px 0 rgb(var(--iris-fg) / 0.06);
   cursor: pointer;
-  -webkit-user-select: none;
-  user-select: none;
 }
 
 .iris-fullscreen-overlay-header .iris-entity-tile-header-close {
@@ -732,12 +968,12 @@
 .iris-drag-overlay {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 12px;
-  background: color-mix(in srgb, var(--iris-tile-color, #6366f1) 25%, #1e1e2e);
-  border: 1px solid color-mix(in srgb, var(--iris-tile-color, #6366f1) 50%, transparent);
-  border-radius: 6px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  gap: var(--iris-space-md);
+  padding: var(--iris-space-md) var(--iris-space-lg);
+  background: color-mix(in srgb, var(--iris-tile-color, var(--iris-tile-color-default)) 25%, var(--iris-surface-overlay));
+  border: 1px solid color-mix(in srgb, var(--iris-tile-color, var(--iris-tile-color-default)) 50%, transparent);
+  border-radius: var(--iris-radius-md);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.4);
   pointer-events: none;
   white-space: nowrap;
 }
@@ -747,28 +983,18 @@
   height: 10px;
   border-radius: 50%;
   flex-shrink: 0;
-  box-shadow: 0 0 0 1px rgba(255,255,255,0.15);
+  box-shadow: 0 0 0 1px rgb(var(--iris-fg) / 0.15);
 }
 
 .iris-drag-overlay-name {
-  font-size: 12px;
+  font-size: var(--iris-text-base);
   font-weight: 500;
-  color: rgba(255,255,255,0.85);
+  color: rgb(var(--iris-fg) / 0.85);
 }
 
 .iris-drag-over {
   border-color: color-mix(in srgb, var(--_color) 60%, transparent);
   box-shadow: 0 0 20px color-mix(in srgb, var(--_color) 30%, transparent);
-}
-
-/* Glow animation for tile interactions */
-@keyframes iris-glow {
-  0%, 100% { box-shadow: 0 0 20px rgba(99, 102, 241, 0.3); }
-  50%      { box-shadow: 0 0 40px rgba(99, 102, 241, 0.6); }
-}
-
-.iris-entity-tile.iris-animating {
-  animation: iris-glow 600ms ease-in-out;
 }
 
 /* --- Drop indicator overlay --- */
@@ -800,20 +1026,20 @@
 }
 
 .iris-drop-label {
-  padding: 4px 12px;
+  padding: var(--iris-space-sm) var(--iris-space-lg);
   background: color-mix(in srgb, var(--_color) 90%, black);
-  color: #fff;
-  font-size: 12px;
+  color: rgb(var(--iris-fg));
+  font-size: var(--iris-text-base);
   font-weight: 500;
   border-radius: 20px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.3);
 }
 
 /* --- Resizer --- */
 
 .iris-resizer {
   background: transparent;
-  transition: background 200ms ease;
+  transition: background var(--iris-ease-smooth);
   z-index: 100;
   position: relative;
 }
@@ -841,9 +1067,6 @@
 /* Prevent all selection during resize */
 body.iris-resizing,
 body.iris-resizing * {
-  -webkit-user-select: none !important;
-  user-select: none !important;
-  -webkit-touch-callout: none !important;
   cursor: inherit;
 }
 
@@ -853,7 +1076,7 @@ body.iris-resizing * {
     padding: 12px 14px;
   }
   .iris-entity-tile-header-name {
-    font-size: 14px;
+    font-size: var(--iris-text-lg);
   }
   .iris-entity-tile-header-close {
     min-width: 44px;
@@ -878,47 +1101,47 @@ body.iris-resizing * {
 .iris-sidebar {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--iris-space-sm);
 }
 
 .iris-sidebar-drag-over {
-  background: rgba(99, 102, 241, 0.05);
+  background: rgb(var(--iris-accent) / 0.05);
 }
 
 /* --- Entity card group (stage card in sidebar) --- */
 
 .iris-entity-card-group {
   padding: 10px 14px;
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.06);
-  border-radius: 8px;
-  color: rgba(255,255,255,0.6);
+  background: rgb(var(--iris-fg) / 0.03);
+  border: 1px solid rgb(var(--iris-fg) / 0.06);
+  border-radius: var(--iris-radius-lg);
+  color: rgb(var(--iris-fg) / 0.6);
   cursor: pointer;
-  font-size: 14px;
+  font-size: var(--iris-text-lg);
   text-align: left;
-  transition: all 150ms ease;
+  transition: all var(--iris-ease-default);
 }
 
 .iris-entity-card-group:hover {
-  background: rgba(255,255,255,0.06);
-  color: rgba(255,255,255,0.9);
+  background: rgb(var(--iris-fg) / 0.06);
+  color: rgb(var(--iris-fg) / 0.9);
 }
 
 .iris-entity-card-group-active {
-  background: rgba(99, 102, 241, 0.15);
-  border-color: rgba(99, 102, 241, 0.3);
-  color: #fff;
+  background: rgb(var(--iris-accent) / 0.15);
+  border-color: rgb(var(--iris-accent) / 0.3);
+  color: rgb(var(--iris-fg));
 }
 
 .iris-entity-card-group-drag-over {
-  border-color: rgba(99, 102, 241, 0.5);
-  background: rgba(99, 102, 241, 0.1);
+  border-color: rgb(var(--iris-accent) / 0.5);
+  background: rgb(var(--iris-accent) / 0.1);
 }
 
 .iris-entity-card-group-content {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--iris-space-md);
 }
 
 .iris-entity-card-group-label {
@@ -928,40 +1151,40 @@ body.iris-resizing * {
 .iris-entity-card-group-entities {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 3px; /* tight spacing between entity chips */
 }
 
 /* --- Entity card (sidebar chip) --- */
 
 .iris-entity-card {
-  padding: 5px 8px;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.06);
-  border-radius: 6px;
-  color: rgba(255,255,255,0.5);
-  font-size: 11px;
+  padding: 5px var(--iris-space-md);
+  background: rgb(var(--iris-fg) / 0.04);
+  border: 1px solid rgb(var(--iris-fg) / 0.06);
+  border-radius: var(--iris-radius-md);
+  color: rgb(var(--iris-fg) / 0.5);
+  font-size: var(--iris-text-md);
   cursor: grab;
-  transition: all 150ms ease;
+  transition: all var(--iris-ease-default);
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--iris-space-md);
 }
 
 .iris-entity-card:hover {
-  background: rgba(255,255,255,0.08);
-  color: rgba(255,255,255,0.8);
+  background: rgb(var(--iris-fg) / 0.08);
+  color: rgb(var(--iris-fg) / 0.8);
 }
 
 .iris-entity-card-close {
   margin-left: auto;
   background: none;
   border: none;
-  color: rgba(255,255,255,0.3);
-  font-size: 14px;
+  color: rgb(var(--iris-fg) / 0.3);
+  font-size: var(--iris-text-lg);
   line-height: 1;
   cursor: pointer;
-  padding: 0 2px;
-  transition: color 150ms ease;
+  padding: 0 var(--iris-space-xs);
+  transition: color var(--iris-ease-default);
   opacity: 0;
 }
 
@@ -970,13 +1193,13 @@ body.iris-resizing * {
 }
 
 .iris-entity-card-close:hover {
-  color: rgba(255,255,255,0.9);
+  color: rgb(var(--iris-fg) / 0.9);
 }
 
 .iris-entity-card-active {
-  background: rgba(99, 102, 241, 0.15);
-  border-color: rgba(99, 102, 241, 0.3);
-  color: rgba(255,255,255,0.9);
+  background: rgb(var(--iris-accent) / 0.15);
+  border-color: rgb(var(--iris-accent) / 0.3);
+  color: rgb(var(--iris-fg) / 0.9);
 }
 
 .iris-entity-card-dot {

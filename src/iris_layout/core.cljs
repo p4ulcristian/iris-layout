@@ -2,7 +2,7 @@
   "iris-layout — a 2D tiling workspace grid for Reagent."
   (:require [reagent.core :as r]
             [clojure.string :as str]
-            ["@dnd-kit/core" :refer [DndContext DragOverlay useDroppable]]
+            ["@dnd-kit/core" :refer [DndContext DragOverlay PointerSensor useDroppable useSensor useSensors]]
             [iris-layout.layout :as layout]
             [iris-layout.util :as util]
             [iris-layout.pane.pane :as pane]
@@ -14,8 +14,19 @@
 
 (r/set-default-compiler! (r/create-compiler {:function-components true}))
 
-(def dnd-context-component (r/adapt-react-class DndContext))
 (def drag-overlay-component (r/adapt-react-class DragOverlay))
+
+(defn dnd-context-fc
+  "DndContext wrapper that configures a PointerSensor with a distance constraint,
+   so that clicks and double-clicks still fire on draggable elements."
+  [{:keys [on-drag-start on-drag-move on-drag-end children]}]
+  (let [sensors (useSensors (useSensor PointerSensor #js {:activationConstraint #js {:distance 5}}))]
+    (r/as-element
+      [:> DndContext {:sensors      sensors
+                      :onDragStart  on-drag-start
+                      :onDragMove   on-drag-move
+                      :onDragEnd    on-drag-end}
+       children])))
 
 
 ;; ============================================================
@@ -278,27 +289,30 @@
       (let [[cols rows] (grid-dimensions workspaces)]
         [:div.iris-grid-viewport
          {:style (when @tile/dragging-tile {:cursor "grabbing"})}
-         [dnd-context-component
+         [:f> dnd-context-fc
           {:on-drag-start (partial handle-drag-start props-ref)
            :on-drag-move  (partial handle-drag-move props-ref)
-           :on-drag-end   (partial handle-drag-end props-ref)}
-          [:div.iris-grid-center
-           [:div.iris-grid-canvas
-            {:style (camera-style cols rows active-position)}
-            (grid-canvas cols rows workspaces active-position props)]]
-          [drag-overlay-component]
-          [:f> tile/drag-ghost-portal]
-          [command-center/command-center
-           {:cols                    cols
-            :rows                    rows
-            :workspaces              workspaces
-            :active-position         active-position
-            :active-entity           (:active-entity props)
-            :entities                entities
-            :entity-types            (:entity-types props)
-            :on-active-position-change on-active-position-change
-            :on-workspaces-change    (:on-workspaces-change props)
-            :on-entity-create        (:on-entity-create props)
-            :on-active-entity-change (:on-active-entity-change props)
-            :command-center?         command-center?
-            :logo                    logo}]]]))))
+           :on-drag-end   (partial handle-drag-end props-ref)
+           :children
+           (r/as-element
+             [:<>
+              [:div.iris-grid-center
+               [:div.iris-grid-canvas
+                {:style (camera-style cols rows active-position)}
+                (grid-canvas cols rows workspaces active-position props)]]
+              [drag-overlay-component]
+              [:f> tile/drag-ghost-portal]
+              [command-center/command-center
+               {:cols                    cols
+                :rows                    rows
+                :workspaces              workspaces
+                :active-position         active-position
+                :active-entity           (:active-entity props)
+                :entities                entities
+                :entity-types            (:entity-types props)
+                :on-active-position-change on-active-position-change
+                :on-workspaces-change    (:on-workspaces-change props)
+                :on-entity-create        (:on-entity-create props)
+                :on-active-entity-change (:on-active-entity-change props)
+                :command-center?         command-center?
+                :logo                    logo}]])}]]))))
