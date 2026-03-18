@@ -20,6 +20,19 @@
   initial-value: #6366f1;
 }
 
+@property --iris-glow-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@property --iris-glow-on {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 0;
+}
+
+
 
 /* --- Design tokens --- */
 
@@ -533,17 +546,26 @@ body:has(.iris-grid-viewport) {
   border-radius: var(--iris-radius-xl);
   overflow: hidden;
   background: color-mix(in srgb, var(--_color) 12%, rgb(22 27 45));
-  border: 1px solid rgb(255 255 255 / 0.06);
-  border-top-color: color-mix(in srgb, var(--_color) 35%, rgb(255 255 255 / 0.15));
-  transition: transform var(--iris-ease-spring), opacity var(--iris-ease-smooth);
+  border: 2px solid var(--_color);
+  padding: 1px;
   display: flex;
   flex-direction: column;
+  mask:
+    conic-gradient(#000 0 0) content-box,
+    linear-gradient(calc(mod(var(--iris-glow-angle), 180deg) * var(--iris-glow-on) + 45deg),
+      #0000 30%, #000 40% 60%, #0000 70%) subtract,
+    conic-gradient(#000 0 0) padding-box;
+  transition: transform var(--iris-ease-spring), opacity var(--iris-ease-smooth),
+    --iris-glow-on 0.5s, --iris-glow-angle 0s 0.5s;
 }
 
 
 .iris-entity-tile-focused {
   z-index: 10;
-  border-top-color: color-mix(in srgb, var(--_color) 50%, rgb(255 255 255 / 0.22));
+  --iris-glow-on: 1;
+  --iris-glow-angle: 15turn;
+  transition: transform var(--iris-ease-spring), opacity var(--iris-ease-smooth),
+    --iris-glow-on 0s, --iris-glow-angle 120s linear;
 }
 
 .iris-entity-tile-unfocused {
