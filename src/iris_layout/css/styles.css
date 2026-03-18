@@ -55,6 +55,9 @@
   --iris-fg: 255 255 255;
   /* Default tile color */
   --iris-tile-color-default: #6366f1;
+  /* Tile border */
+  --iris-tile-border-width: 2px;
+  --iris-tile-border-gap: 3px;
   /* Border radius */
   --iris-radius-sm: 4px;
   --iris-radius-md: 6px;
@@ -546,8 +549,8 @@ body:has(.iris-grid-viewport) {
   border-radius: var(--iris-radius-xl);
   overflow: hidden;
   background: color-mix(in srgb, var(--_color) 12%, rgb(22 27 45));
-  border: 1px solid color-mix(in srgb, var(--_color) 40%, rgb(255 255 255 / 0.08));
-  padding: 1px;
+  border: var(--iris-tile-border-width) solid color-mix(in srgb, var(--_color) 40%, rgb(255 255 255 / 0.08));
+  padding: var(--iris-tile-border-gap);
   display: flex;
   flex-direction: column;
   mask:
