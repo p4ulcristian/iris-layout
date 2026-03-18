@@ -94,6 +94,7 @@ body:has(.iris-grid-viewport) {
 .iris-grid-viewport,
 .iris-grid-viewport * {
   box-sizing: border-box;
+  background: red;
 }
 
 /* --- Body --- */
