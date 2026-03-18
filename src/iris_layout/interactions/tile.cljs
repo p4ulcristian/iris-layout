@@ -29,14 +29,13 @@
     (on-layout-change (layout/update-split-ratio layout split-id new-ratio))))
 
 (defn update-workspaces-with-cleanup
-  "Update a workspace's layout and remove dragged tile from all other workspaces."
-  [workspaces target-pos new-layout drag-source-tile]
-  (if drag-source-tile
+  "Update a workspace's layout and remove the source tile from all workspaces."
+  [workspaces target-pos new-layout source-tile-id]
+  (if source-tile-id
     (reduce-kv
       (fn [acc pos ws-data]
-        (if (= pos target-pos)
-          (assoc acc pos (assoc ws-data :layout new-layout))
-          (assoc acc pos (assoc ws-data :layout
-                           (layout/remove-tile-from-layout (:layout ws-data) drag-source-tile)))))
+        (let [base    (if (= pos target-pos) new-layout (:layout ws-data))
+              cleaned (layout/remove-tile-from-layout base source-tile-id)]
+          (assoc acc pos (assoc ws-data :layout (or cleaned base)))))
       {} workspaces)
     (update workspaces target-pos assoc :layout new-layout)))

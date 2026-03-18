@@ -89,17 +89,11 @@ body:has(.iris-grid-viewport) {
   margin: 0;
 }
 
-/* --- Global: box-sizing and text selection --- */
+/* --- Global: box-sizing --- */
 
 .iris-grid-viewport,
-.iris-grid-viewport *,
-.iris-body,
-.iris-body *,
-.iris-sidebar,
-.iris-sidebar * {
+.iris-grid-viewport * {
   box-sizing: border-box;
-  margin: 0;
-  padding: 0;
 }
 
 /* --- Body --- */
