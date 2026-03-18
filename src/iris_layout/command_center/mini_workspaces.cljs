@@ -1,7 +1,6 @@
 (ns iris-layout.command-center.mini-workspaces
   "Mini workspace grid for the command center — drag, drop, and preview."
   (:require [reagent.core :as r]
-            [react :as react]
             [react-dom :as react-dom]
             ["@dnd-kit/core" :refer [DndContext DragOverlay PointerSensor useDraggable useDroppable useSensor useSensors]]
             [iris-layout.layout :as layout]
@@ -135,32 +134,27 @@
        (when drop-target? " iris-command-center-cell-drop-target")))
 
 (defn grid-cell-fc [{:keys [pos workspace workspaces active-pos entities
-                             on-workspaces-change on-active-position-change command-center?]}]
+                             on-workspaces-change on-active-position-change command-center? cell-number]}]
   (let [result      (useDroppable #js {:id (str (first pos) "," (second pos))})
         set-ref     (.-setNodeRef result)
         is-over     (.-isOver result)
         active?     (= pos active-pos)
         has-layout? (some? (:layout workspace))
-        hover-timer (react/useRef nil)
         navigate!   (fn []
                       (when-not @dragging?
                         (grid-interactions/navigate-to-workspace
                           pos on-active-position-change)))]
     [:div {:ref   set-ref
            :class (grid-cell-class active? is-over)
-           :on-mouse-enter (fn [_e]
-                             (when-not active?
-                               (set! (.-current hover-timer)
-                                     (js/setTimeout navigate! 300))))
-           :on-mouse-leave (fn [_e]
-                             (when (.-current hover-timer)
-                               (js/clearTimeout (.-current hover-timer))
-                               (set! (.-current hover-timer) nil)))}
-     (when has-layout?
+           :on-click (fn [_e]
+                       (when-not active?
+                         (navigate!)))}
+     (if has-layout?
        [command-center-mini-layout (:layout workspace) entities
         (cell-on-close-tile pos workspace workspaces on-workspaces-change)
         pos
-        navigate!])]))
+        navigate!]
+       [:div.iris-command-center-cell-number (str cell-number)])]))
 
 (defn grid-view-size [cols rows]
   [cols rows])
@@ -171,7 +165,7 @@
 (defn grid-cells [{:keys [view-cols view-rows workspaces active-position entities
                           on-workspaces-change on-active-position-change command-center?]}]
   [:<>
-   (map (fn [[x y]]
+   (map-indexed (fn [idx [x y]]
           ^{:key (str x "," y)}
           [grid-cell-fc {:pos                       [x y]
                          :workspace                 (get workspaces [x y])
@@ -180,7 +174,8 @@
                          :entities                  entities
                          :on-workspaces-change      on-workspaces-change
                          :on-active-position-change on-active-position-change
-                         :command-center?           command-center?}])
+                         :command-center?           command-center?
+                         :cell-number               (inc idx)}])
         (for [y (range view-rows)
               x (range view-cols)]
           [x y]))])

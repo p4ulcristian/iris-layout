@@ -82,6 +82,7 @@
 ;; Global drag state shared across all tile instances.
 (defonce fullscreen-tile (r/atom nil))
 (defonce fullscreen-rect (atom nil))
+(defonce popover-ref (atom nil))
 
 ;; Set by DndContext.onDragStart/End in core.cljs.
 (def dragging-tile (r/atom nil))
@@ -93,12 +94,24 @@
 (def drop-target (r/atom nil))
 
 (defn toggle-fullscreen!
-  "Toggle fullscreen state for a tile."
+  "Toggle fullscreen state for a tile using Popover API + View Transitions."
   [node]
-  (if (= @fullscreen-tile (:id node))
-    (do (reset! fullscreen-rect nil)
-        (reset! fullscreen-tile nil))
-    (reset! fullscreen-tile (:id node))))
+  (let [opening? (not= @fullscreen-tile (:id node))
+        update-fn (fn []
+                    (if opening?
+                      (do (reset! fullscreen-tile (:id node))
+                          (js/setTimeout
+                            (fn []
+                              (when-let [^js el @popover-ref]
+                                (.showPopover el)))
+                            0))
+                      (do (when-let [^js el @popover-ref]
+                            (.hidePopover el))
+                          (reset! fullscreen-rect nil)
+                          (reset! fullscreen-tile nil))))]
+    (if (.-startViewTransition js/document)
+      (.startViewTransition js/document update-fn)
+      (update-fn))))
 
 (defn make-tile-class
   "Build the CSS class string for the root tile div based on current state."
@@ -109,8 +122,45 @@
        (when drag-over? " iris-drag-over")
        (when dragging? " iris-dragging")))
 
+;; --- Shared header ---
+
+(defn tile-header
+  "Shared header used by both inline tile and fullscreen popover.
+   Accepts :draggable? to enable dnd-kit drag listeners."
+  [{:keys [node entity-name entity-icon tile-color on-close on-double-click
+           color-picker-open? color-picker-rect on-color-change
+           drag-ref drag-listeners drag-attrs]}]
+  [:div.iris-entity-tile-header
+   (merge {:ref drag-ref
+           :on-double-click on-double-click}
+          drag-listeners drag-attrs)
+   [:div {:style {:flex-shrink 0}}
+    [:div.iris-entity-tile-header-icon
+     {:style {:color tile-color}
+      :on-pointer-down (fn [e] (.stopPropagation e))
+      :on-pointer-up (fn [e]
+                       (.stopPropagation e)
+                       (let [rect (.getBoundingClientRect (.-currentTarget e))]
+                         (reset! color-picker-rect {:top    (.-top rect)  :left   (.-left rect)
+                                                    :bottom (.-bottom rect) :width (.-width rect)}))
+                       (swap! color-picker-open? not))}
+     (if entity-icon
+       [entity-icon]
+       [:div.iris-entity-tile-header-dot
+        {:style {:background tile-color}}])]
+    (when @color-picker-open?
+      [color-picker-popover (:entity-id node) on-color-change
+       color-picker-open? @color-picker-rect tile-color])]
+   [:span.iris-entity-tile-header-name entity-name]
+   [:button.iris-entity-tile-header-close
+    {:on-pointer-down (fn [e] (.stopPropagation e))
+     :on-click (fn [e]
+                 (.stopPropagation e)
+                 (when on-close (on-close (:id node))))}
+    "\u00d7"]])
+
 (defn tile-header-fc
-  "Draggable tile header — uses useDraggable to initiate a dnd-kit drag gesture."
+  "Draggable wrapper around tile-header — uses useDraggable for dnd-kit."
   [{:keys [node entity-name entity-icon tile-color close-ref
            color-picker-open? color-picker-rect color-change-ref tile-ref]}]
   (let [result    (useDraggable #js {:id   (:id node)
@@ -119,34 +169,18 @@
         set-ref   (.-setNodeRef result)
         listeners (js->clj (.-listeners result) :keywordize-keys true)
         attrs     (js->clj (.-attributes result) :keywordize-keys true)]
-    [:div.iris-entity-tile-header
-     (merge {:ref             (fn [el] (reset! tile-ref el) (set-ref el))
-             :on-double-click (fn [_] (toggle-fullscreen! node))}
-            listeners attrs)
-     [:div {:style {:flex-shrink 0}}
-      [:div.iris-entity-tile-header-icon
-       {:style    {:color tile-color}
-        :on-pointer-down (fn [e] (.stopPropagation e))
-        :on-pointer-up (fn [e]
-                         (.stopPropagation e)
-                         (let [rect (.getBoundingClientRect (.-currentTarget e))]
-                           (reset! color-picker-rect {:top    (.-top rect)  :left   (.-left rect)
-                                                      :bottom (.-bottom rect) :width (.-width rect)}))
-                         (swap! color-picker-open? not))}
-       (if entity-icon
-         [entity-icon]
-         [:div.iris-entity-tile-header-dot
-          {:style {:background tile-color}}])]
-      (when @color-picker-open?
-        [color-picker-popover (:entity-id node) @color-change-ref
-         color-picker-open? @color-picker-rect tile-color])]
-     [:span.iris-entity-tile-header-name entity-name]
-     [:button.iris-entity-tile-header-close
-      {:on-pointer-down (fn [e] (.stopPropagation e))
-       :on-click (fn [e]
-                   (.stopPropagation e)
-                   (when @close-ref (@close-ref (:id node))))}
-      "\u00d7"]]))
+    [tile-header {:node               node
+                  :entity-name        entity-name
+                  :entity-icon        entity-icon
+                  :tile-color         tile-color
+                  :on-close           @close-ref
+                  :on-double-click    (fn [_] (toggle-fullscreen! node))
+                  :color-picker-open? color-picker-open?
+                  :color-picker-rect  color-picker-rect
+                  :on-color-change    @color-change-ref
+                  :drag-ref           (fn [el] (reset! tile-ref el) (set-ref el))
+                  :drag-listeners     listeners
+                  :drag-attrs         attrs}]))
 
 (defn entity-tile-component
   "Renders a single entity tile with drag-and-drop, fullscreen, and color-picker support."
@@ -181,8 +215,6 @@
          :on-mouse-enter (fn [_]
                            (when @active-entity-chg-ref
                              (@active-entity-chg-ref (:entity-id node))))}
-        [:div.iris-tile-ca]
-        [:div.iris-tile-specular]
         [tile-header-fc {:node               node
                               :entity-name        (:name entity)
                               :entity-icon        (:icon entity)
@@ -198,28 +230,24 @@
              [render-entity-tile (or entity {:id (:entity-id node)})])])
         [drop-indicator (when drag-over? (:half dt)) drag-over?]]
        (when is-fullscreen?
-         (react-dom/createPortal
-           (r/as-element
-             [:div.iris-fullscreen-overlay
-              {:style {"--iris-tile-color" tile-color}
-               :on-double-click (fn [_]
-                                  (reset! fullscreen-tile nil)
-                                  (reset! fullscreen-rect nil))}
-              [:div.iris-fullscreen-overlay-header
-               [:div.iris-entity-tile-header-dot
-                {:style {:background tile-color}}]
-               [:span.iris-entity-tile-header-name (:name entity)]
-               [:button.iris-entity-tile-header-close
-                {:on-pointer-down (fn [e] (.stopPropagation e))
-                 :on-click (fn [e]
-                             (.stopPropagation e)
-                             (reset! fullscreen-tile nil)
-                             (reset! fullscreen-rect nil))}
-                "\u00d7"]]
-              [:div.iris-entity-tile-content
-               (when render-entity-tile
-                 [render-entity-tile (or entity {:id (:entity-id node)})])]])
-           js/document.body))])))
+         [:div.iris-fullscreen-overlay
+          {:ref     (fn [^js el]
+                      (reset! popover-ref el)
+                      (when el (.showPopover el)))
+           :popover "manual"
+           :style   {"--iris-tile-color" tile-color}}
+          [tile-header {:node            node
+                        :entity-name     (:name entity)
+                        :entity-icon     (:icon entity)
+                        :tile-color      tile-color
+                        :on-close        (fn [_] (toggle-fullscreen! node))
+                        :on-double-click (fn [_] (toggle-fullscreen! node))
+                        :color-picker-open? color-picker-open?
+                        :color-picker-rect  color-picker-rect
+                        :on-color-change @color-change-ref}]
+          [:div.iris-entity-tile-content
+           (when render-entity-tile
+             [render-entity-tile (or entity {:id (:entity-id node)})])]])])))
 
 (defn drag-ghost-portal []
   (when-let [g @drag-ghost]

@@ -105,17 +105,19 @@
 
 (defn empty-workspace-fc
   "Droppable empty workspace cell."
-  [{:keys [x y]}]
+  [{:keys [x y cell-number]}]
   (let [result  (useDroppable #js {:id (str "empty:" x "," y)})
         set-ref (.-setNodeRef result)
         is-over (.-isOver result)]
     [:div.iris-empty-workspace
      {:ref   set-ref
-      :style (when is-over {:background "rgba(59,130,246,0.1)"})}]))
+      :style (when is-over {:background "rgba(59,130,246,0.1)"})}
+     (when cell-number
+       [:span.iris-workspace-number (str cell-number)])]))
 
 
 (defn grid-cell
-  [workspace x y active? props]
+  [workspace x y active? props cell-number]
   (let [{:keys [entities render-entity-tile active-entity
                 on-workspaces-change on-entity-close
                 on-active-entity-change on-entity-color-change workspaces]} props
@@ -137,15 +139,18 @@
              (on-workspaces-change
                (assoc workspaces pos (assoc workspace :layout new-layout)))))
          :on-entity-close on-entity-close}]
-       [empty-workspace-fc {:x x :y y}])]))
+       [empty-workspace-fc {:x x :y y :cell-number cell-number}])]))
 
 (defn grid-canvas
   [cols rows workspaces active-position props]
   (let [[ax ay] active-position]
-    (for [y (range rows)
-          x (range cols)]
-      ^{:key (str x "," y)}
-      [grid-cell (get workspaces [x y]) x y (and (= x ax) (= y ay)) props])))
+    (map-indexed
+      (fn [idx [x y]]
+        ^{:key (str x "," y)}
+        [grid-cell (get workspaces [x y]) x y (and (= x ax) (= y ay)) props (inc idx)])
+      (for [y (range rows)
+            x (range cols)]
+        [x y]))))
 
 (def ^:private grid-gap 16)
 
