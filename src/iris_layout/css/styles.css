@@ -540,9 +540,6 @@ body:has(.iris-grid-viewport) {
   flex-direction: column;
 }
 
-.iris-entity-tile:hover {
-  transform: scale(1.01);
-}
 
 .iris-entity-tile-focused {
   z-index: 10;

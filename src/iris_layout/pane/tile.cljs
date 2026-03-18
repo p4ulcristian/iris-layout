@@ -214,6 +214,9 @@
                            is-fullscreen? (assoc :visibility "hidden"))
          :on-mouse-enter (fn [_]
                            (when @active-entity-chg-ref
+                             (@active-entity-chg-ref (:entity-id node))))
+         :on-mouse-move  (fn [_]
+                           (when (and @active-entity-chg-ref (not focused?))
                              (@active-entity-chg-ref (:entity-id node))))}
         [tile-header-fc {:node               node
                               :entity-name        (:name entity)
