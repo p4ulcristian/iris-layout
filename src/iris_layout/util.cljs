@@ -1,5 +1,5 @@
 (ns iris-layout.util
-  (:require-macros [iris-layout.css :refer [inline-css]]))
+  (:require [shadow.resource :as rc]))
 
 (defn generate-id []
   (str (random-uuid)))
@@ -96,6 +96,6 @@
   (when-not (js/document.getElementById "iris-layout-styles")
     (let [style (.createElement js/document "style")]
       (set! (.-id style) "iris-layout-styles")
-      (set! (.-textContent style) (inline-css))
+      (set! (.-textContent style) (rc/inline "iris_layout/css/styles.css"))
       (.appendChild (.-head js/document) style)))
   (inject-liquid-glass-filter!))
