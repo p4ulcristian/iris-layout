@@ -342,6 +342,11 @@
      :logo                     - hiccup for the command center trigger icon"
   [_]
   (util/inject-css!)
+  ;; Reset any browser-restored scroll position that could offset the viewport
+  (js/window.scrollTo 0 0)
+  (when-let [app (.getElementById js/document "app")]
+    (set! (.-scrollTop app) 0)
+    (set! (.-scrollLeft app) 0))
   (let [command-center? (r/atom false)
         props-ref       (atom nil)
         mounted?        (r/atom false)]
