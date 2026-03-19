@@ -343,13 +343,16 @@
   [_]
   (util/inject-css!)
   (let [command-center? (r/atom false)
-        props-ref       (atom nil)]
+        props-ref       (atom nil)
+        mounted?        (r/atom false)]
     (.addEventListener js/document "keydown" (partial handle-keydown command-center? props-ref))
     (.addEventListener js/document "keyup"   (partial handle-keyup command-center?))
     (fn [{:keys [workspaces active-position entities render-entity-tile
                  on-active-position-change logo] :as props}]
       (schema/validate-grid-props props)
       (reset! props-ref props)
+      (when-not @mounted?
+        (js/requestAnimationFrame #(reset! mounted? true)))
       (let [[cols rows] (grid-dimensions workspaces)]
         [:div.iris-grid-viewport
          {:style (when @tile/dragging-tile {:cursor "grabbing"})}
@@ -361,8 +364,8 @@
            (r/as-element
              [:<>
               [:div.iris-grid-center
-               [:div.iris-grid-canvas
-                {:style (camera-style cols rows active-position)}
+               [:div {:class (str "iris-grid-canvas" (when-not @mounted? " iris-no-transition"))
+                      :style (camera-style cols rows active-position)}
                 (grid-canvas cols rows workspaces active-position props)]]
               [drag-overlay-component]
               [:f> tile/drag-ghost-portal]

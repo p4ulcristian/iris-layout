@@ -200,6 +200,10 @@ body:has(.iris-grid-viewport) {
   transition: transform 400ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+.iris-grid-canvas.iris-no-transition {
+  transition: none !important;
+}
+
 .iris-grid-cell {
   display: flex;
   min-height: 0;
