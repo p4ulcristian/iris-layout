@@ -352,7 +352,9 @@
       (schema/validate-grid-props props)
       (reset! props-ref props)
       (when-not @mounted?
-        (js/requestAnimationFrame #(reset! mounted? true)))
+        (js/requestAnimationFrame
+          #(js/requestAnimationFrame
+             (fn [] (reset! mounted? true)))))
       (let [[cols rows] (grid-dimensions workspaces)]
         [:div.iris-grid-viewport
          {:style (when @tile/dragging-tile {:cursor "grabbing"})}
