@@ -1,6 +1,7 @@
 (ns iris-layout.command-center.mini-workspaces
   "Mini workspace grid for the command center — drag, drop, and preview."
   (:require [reagent.core :as r]
+            [reagent.hooks :as rh]
             [react-dom :as react-dom]
             ["@dnd-kit/core" :refer [DndContext DragOverlay PointerSensor useDraggable useDroppable useSensor useSensors]]
             [iris-layout.layout :as layout]
@@ -67,7 +68,7 @@
                   updated  (assoc cleaned target-pos (assoc target-ws :layout target-layout))]
               (on-workspaces-change updated))))))))
 
-(defn mini-tile-fc [{:keys [layout-node entities on-close-entity source-pos on-navigate]}]
+(r/defc mini-tile-fc [{:keys [layout-node entities on-close-entity source-pos on-navigate]}]
   (let [entity    (get entities (keyword (:entity-id layout-node)))
         result    (useDraggable #js {:id   (:id layout-node)
                                      :data #js {:entity_id  (:entity-id layout-node)
@@ -76,7 +77,6 @@
         listeners (js->clj (.-listeners result) :keywordize-keys true)
         attrs     (js->clj (.-attributes result) :keywordize-keys true)
         dragging  (.-isDragging result)
-        transform (.-transform result)
         style     (merge
                     (when (:color entity) {"--iris-tile-color" (:color entity)})
                     (when dragging {:opacity "0"}))]
@@ -93,7 +93,7 @@
        :on-pointer-down (fn [e] (.stopPropagation e))}
       "\u00d7"]]))
 
-(defn command-center-mini-layout
+(r/defc command-center-mini-layout
   "Renders a miniature read-only preview of a layout tree inside the command center."
   [layout-node entities on-close-entity source-pos on-navigate]
   (case (layout/node-type layout-node)
@@ -133,7 +133,7 @@
        (when active?      " iris-command-center-cell-active")
        (when drop-target? " iris-command-center-cell-drop-target")))
 
-(defn grid-cell-fc [{:keys [pos workspace workspaces active-pos entities
+(r/defc grid-cell-fc [{:keys [pos workspace workspaces active-pos entities
                              on-workspaces-change on-active-position-change command-center? cell-number]}]
   (let [result      (useDroppable #js {:id (str (first pos) "," (second pos))})
         set-ref     (.-setNodeRef result)
@@ -156,13 +156,13 @@
         navigate!]
        [:div.iris-command-center-cell-number (str cell-number)])]))
 
-(defn grid-view-size [cols rows]
+(defn- grid-view-size [cols rows]
   [cols rows])
 
-(defn grid-style [view-cols _view-rows]
+(defn- grid-style [view-cols _view-rows]
   {:grid-template-columns (str "repeat(" view-cols ", minmax(120px, 240px))")})
 
-(defn grid-cells [{:keys [view-cols view-rows workspaces active-position entities
+(r/defc grid-cells [{:keys [view-cols view-rows workspaces active-position entities
                           on-workspaces-change on-active-position-change command-center?]}]
   [:<>
    (map-indexed (fn [idx [x y]]
@@ -180,7 +180,7 @@
               x (range view-cols)]
           [x y]))])
 
-(defn drag-ghost-portal []
+(r/defc drag-ghost-portal []
   (when-let [g @drag-ghost]
     (react-dom/createPortal
       (r/as-element
@@ -196,7 +196,7 @@
          [:span.iris-command-center-tile-name (:name g)]])
       js/document.body)))
 
-(defn workspace-grid
+(r/defc workspace-grid
   "Render the grid of all workspace cells."
   [{:keys [cols rows workspaces active-position entities
            on-workspaces-change on-active-position-change command-center?]}]
@@ -216,4 +216,4 @@
                     :on-workspaces-change      on-workspaces-change
                     :on-active-position-change on-active-position-change
                     :command-center?           command-center?}]]]
-     [:f> drag-ghost-portal]]))
+     [drag-ghost-portal]]))

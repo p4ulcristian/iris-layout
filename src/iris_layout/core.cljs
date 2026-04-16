@@ -2,6 +2,7 @@
   "iris-layout — a 2D tiling workspace grid for Reagent."
   (:require [cljs.pprint]
             [reagent.core :as r]
+            [reagent.hooks :as rh]
             [clojure.string :as str]
             ["@dnd-kit/core" :refer [DndContext DragOverlay PointerSensor useDroppable useSensor useSensors]]
             [iris-layout.layout :as layout]
@@ -13,17 +14,15 @@
             [iris-layout.interactions.grid :as grid-interactions]
             [iris-layout.schema :as schema]))
 
-(r/set-default-compiler! (r/create-compiler {:function-components true}))
-
 (def drag-overlay-component (r/adapt-react-class DragOverlay))
 
 (defonce debug-open? (r/atom false))
 
-(defn debug-inspector
+(r/defc debug-inspector
   "Floating state inspector — toggled with Alt+T. Shows props as EDN with copy button."
   [props]
   (when @debug-open?
-    (let [copied? (r/atom false)
+    (let [[copied? set-copied?] (rh/use-state false)
           edn-str (with-out-str (cljs.pprint/pprint
                     (select-keys props [:workspaces :active-position :active-entity :entities])))]
       [:div {:style {:position "fixed"
@@ -46,14 +45,14 @@
                       :flex-shrink 0}}
         [:span {:style {:font-weight 600 :font-size 9}} "state"]
         [:div {:style {:display "flex" :gap 4}}
-         [:button {:style {:background (if @copied? "rgb(34 197 94 / 0.3)" "rgb(255 255 255 / 0.08)")
+         [:button {:style {:background (if copied? "rgb(34 197 94 / 0.3)" "rgb(255 255 255 / 0.08)")
                            :border "none" :color "rgb(255 255 255 / 0.6)"
                            :padding "1px 6px" :border-radius 3 :cursor "pointer" :font-size 9}
                    :on-click (fn []
                                (.writeText js/navigator.clipboard edn-str)
-                               (reset! copied? true)
-                               (js/setTimeout #(reset! copied? false) 1500))}
-          (if @copied? "ok" "cp")]
+                               (set-copied? true)
+                               (js/setTimeout #(set-copied? false) 1500))}
+          (if copied? "ok" "cp")]
          [:button {:style {:background "rgb(255 255 255 / 0.08)"
                            :border "none" :color "rgb(255 255 255 / 0.6)"
                            :padding "1px 5px" :border-radius 3 :cursor "pointer" :font-size 9}
@@ -63,7 +62,7 @@
                       :white-space "pre-wrap" :word-break "break-all" :line-height 1.3}}
         edn-str]])))
 
-(defn dnd-context-fc
+(r/defc dnd-context-fc
   "DndContext wrapper that configures a PointerSensor with a distance constraint,
    so that clicks and double-clicks still fire on draggable elements."
   [{:keys [on-drag-start on-drag-move on-drag-end children]}]
@@ -80,7 +79,7 @@
 ;; Body stage — single workspace layout renderer
 ;; ============================================================
 
-(defn body-stage-component
+(r/defc body-stage-component
   [{:keys [layout entities render-entity-tile active-entity
            on-layout-change on-active-entity-change on-entity-color-change on-entity-close]}]
   [:div.iris-body-stage
@@ -103,7 +102,7 @@
   [_workspaces]
   [grid-cols grid-rows])
 
-(defn empty-workspace-fc
+(r/defc empty-workspace-fc
   "Droppable empty workspace cell."
   [{:keys [x y cell-number]}]
   (let [result  (useDroppable #js {:id (str "empty:" x "," y)})
@@ -116,7 +115,7 @@
        [:span.iris-workspace-number (str cell-number)])]))
 
 
-(defn grid-cell
+(r/defc grid-cell
   [workspace x y active? props cell-number]
   (let [{:keys [entities render-entity-tile active-entity
                 on-workspaces-change on-entity-close
@@ -316,7 +315,7 @@
 ;; ============================================================
 
 
-(defn grid-component
+(r/defc grid-component
   "Grid — a 2D grid of workspaces with camera-based navigation.
 
    Workspaces are a map keyed by [x y] position vectors:
@@ -340,54 +339,57 @@
      :on-entity-close          - fn(entity-id)
      :on-entity-color-change   - fn(entity-id color)
      :logo                     - hiccup for the command center trigger icon"
-  [_]
-  (util/inject-css!)
-  ;; Reset any browser-restored scroll position that could offset the viewport
-  (js/window.scrollTo 0 0)
-  (when-let [app (.getElementById js/document "app")]
-    (set! (.-scrollTop app) 0)
-    (set! (.-scrollLeft app) 0))
-  (let [command-center? (r/atom false)
-        props-ref       (atom nil)
-        mounted?        (r/atom false)]
-    (.addEventListener js/document "keydown" (partial handle-keydown command-center? props-ref))
-    (.addEventListener js/document "keyup"   (partial handle-keyup command-center?))
-    (fn [{:keys [workspaces active-position entities render-entity-tile
-                 on-active-position-change logo] :as props}]
-      (schema/validate-grid-props props)
-      (reset! props-ref props)
-      (when-not @mounted?
-        (js/requestAnimationFrame
-          #(js/requestAnimationFrame
-             (fn [] (reset! mounted? true)))))
-      (let [[cols rows] (grid-dimensions workspaces)]
-        [:div.iris-grid-viewport
-         {:style (when @tile/dragging-tile {:cursor "grabbing"})}
-         [:f> dnd-context-fc
-          {:on-drag-start (partial handle-drag-start props-ref)
-           :on-drag-move  (partial handle-drag-move props-ref)
-           :on-drag-end   (partial handle-drag-end props-ref)
-           :children
-           (r/as-element
-             [:<>
-              [:div.iris-grid-center
-               [:div {:class (str "iris-grid-canvas" (when-not @mounted? " iris-no-transition"))
-                      :style (camera-style cols rows active-position)}
-                (grid-canvas cols rows workspaces active-position props)]]
-              [drag-overlay-component]
-              [:f> tile/drag-ghost-portal]
-              [command-center/command-center
-               {:cols                    cols
-                :rows                    rows
-                :workspaces              workspaces
-                :active-position         active-position
-                :active-entity           (:active-entity props)
-                :entities                entities
-                :entity-types            (:entity-types props)
-                :on-active-position-change on-active-position-change
-                :on-workspaces-change    (:on-workspaces-change props)
-                :on-entity-create        (:on-entity-create props)
-                :on-active-entity-change (:on-active-entity-change props)
-                :command-center?         command-center?
-                :logo                    logo}]])}]
-         [debug-inspector props]]))))
+  [{:keys [workspaces active-position entities render-entity-tile
+           on-active-position-change logo] :as props}]
+  (r/with-let [command-center? (r/atom false)
+               props-ref       (atom nil)
+               mounted?        (r/atom false)
+               kd-handler      (partial handle-keydown command-center? props-ref)
+               ku-handler      (partial handle-keyup command-center?)
+               _               (do (util/inject-css!)
+                                   (js/window.scrollTo 0 0)
+                                   (when-let [app (.getElementById js/document "app")]
+                                     (set! (.-scrollTop app) 0)
+                                     (set! (.-scrollLeft app) 0))
+                                   (.addEventListener js/document "keydown" kd-handler)
+                                   (.addEventListener js/document "keyup" ku-handler))]
+    (schema/validate-grid-props props)
+    (reset! props-ref props)
+    (when-not @mounted?
+      (js/requestAnimationFrame
+        #(js/requestAnimationFrame
+           (fn [] (reset! mounted? true)))))
+    (let [[cols rows] (grid-dimensions workspaces)]
+      [:div.iris-grid-viewport
+       {:style (when @tile/dragging-tile {:cursor "grabbing"})}
+       [dnd-context-fc
+        {:on-drag-start (partial handle-drag-start props-ref)
+         :on-drag-move  (partial handle-drag-move props-ref)
+         :on-drag-end   (partial handle-drag-end props-ref)
+         :children
+         (r/as-element
+           [:<>
+            [:div.iris-grid-center
+             [:div {:class (str "iris-grid-canvas" (when-not @mounted? " iris-no-transition"))
+                    :style (camera-style cols rows active-position)}
+              (grid-canvas cols rows workspaces active-position props)]]
+            [drag-overlay-component]
+            [tile/drag-ghost-portal]
+            [command-center/command-center
+             {:cols                    cols
+              :rows                    rows
+              :workspaces              workspaces
+              :active-position         active-position
+              :active-entity           (:active-entity props)
+              :entities                entities
+              :entity-types            (:entity-types props)
+              :on-active-position-change on-active-position-change
+              :on-workspaces-change    (:on-workspaces-change props)
+              :on-entity-create        (:on-entity-create props)
+              :on-active-entity-change (:on-active-entity-change props)
+              :command-center?         command-center?
+              :logo                    logo}]])}]
+       [debug-inspector props]])
+    (finally
+      (.removeEventListener js/document "keydown" kd-handler)
+      (.removeEventListener js/document "keyup" ku-handler))))

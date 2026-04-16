@@ -31,7 +31,7 @@
                    :children [{:type "tile" :id "t7" :entity-id "terminal"}
                                {:type "tile" :id "t8" :entity-id "repl"}]}}})
 
-(defn entity-tile [entity]
+(r/defc entity-tile [entity]
   [:div {:style {:display "flex" :align-items "center" :justify-content "center"
                  :height "100%" :width "100%"
                  :font-size "14px" :color "rgba(255,255,255,0.7)"}}
@@ -47,7 +47,7 @@
   (vec (map (fn [[_ e]] {:type (:type e) :name (:name e) :color (:color e) :icon (:icon e)})
             initial-entities)))
 
-(defn app []
+(r/defc app []
   (let [{:keys [workspaces active-position active-entity entities]} @state]
     [iris-layout/grid-component
       {:workspaces              workspaces

@@ -9,9 +9,13 @@
 (defn tile-pane
   [node on-close active-entity entities render-entity-tile on-active-entity-change on-entity-color-change]
   [tile/entity-tile-component
-   node nil on-close
-   (= (:entity-id node) active-entity)
-   entities render-entity-tile nil on-active-entity-change on-entity-color-change])
+   {:node node
+    :on-close on-close
+    :focused? (= (:entity-id node) active-entity)
+    :entities entities
+    :render-entity-tile render-entity-tile
+    :on-active-entity-change on-active-entity-change
+    :on-entity-color-change on-entity-color-change}])
 
 (defn split-pane
   [node on-close on-ratio-change active-entity entities render-entity-tile on-active-entity-change on-entity-color-change]

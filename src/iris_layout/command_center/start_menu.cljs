@@ -1,6 +1,7 @@
 (ns iris-layout.command-center.start-menu
   "Start menu — entity palette for adding entities to the active workspace."
-  (:require [clojure.string]
+  (:require [reagent.core :as r]
+            [clojure.string]
             [iris-layout.util :as util]
             [iris-layout.layout :as layout]
             [iris-layout.pane.tile :as tile]))
@@ -60,7 +61,7 @@
       (when on-active-entity-change
         (on-active-entity-change instance-id)))))
 
-(defn palette-item
+(r/defc palette-item
   "Render a single entity type in the start menu palette."
   [entity-type active-pos workspaces on-workspaces-change on-entity-create active-entity on-active-entity-change]
   [:div.iris-command-center-palette-item
@@ -73,7 +74,7 @@
       {:style {:background (or (:color entity-type) "#6366f1")}}])
    [:span.iris-command-center-palette-name (:name entity-type)]])
 
-(defn start-menu-items
+(r/defc start-menu-items
   [{:keys [entity-types active-position workspaces on-workspaces-change on-entity-create active-entity on-active-entity-change]}]
   [:<>
    (map (fn [et]
@@ -81,7 +82,7 @@
           [palette-item et active-position workspaces on-workspaces-change on-entity-create active-entity on-active-entity-change])
         (sort-by (comp clojure.string/lower-case :name) entity-types))])
 
-(defn start-menu
+(r/defc start-menu
   "Render the start menu with all available entity types."
   [props]
   [:div.iris-command-center-palette

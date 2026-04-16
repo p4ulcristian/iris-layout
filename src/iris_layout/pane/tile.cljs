@@ -1,6 +1,7 @@
 (ns iris-layout.pane.tile
   "Tile component — renders a single entity inside the pane layout."
   (:require [reagent.core :as r]
+            [reagent.hooks :as rh]
             [react-dom :as react-dom]
             ["@dnd-kit/core" :refer [useDraggable useDroppable]]))
 
@@ -16,7 +17,7 @@
   ["#6366f1" "#8b5cf6" "#ec4899" "#f43f5e" "#f97316"
    "#eab308" "#22c55e" "#14b8a6" "#06b6d4" "#3b82f6" "#8b949e"])
 
-(defn color-picker-popover
+(r/defc color-picker-popover
   "Color swatch popover for changing tile color. Rendered as a portal to escape overflow:hidden.
    Registers a document click handler on mount to close itself; removes it on unmount."
   [entity-id on-color-change show? anchor-rect active-color]
@@ -70,7 +71,7 @@
   {:top "Split above" :bottom "Split below"
    :left "Split left" :right "Split right"})
 
-(defn drop-indicator
+(r/defc drop-indicator
   "Renders the visual overlay showing where a dragged tile will land."
   [half visible?]
   (when visible?
@@ -124,7 +125,7 @@
 
 ;; --- Shared header ---
 
-(defn tile-header
+(r/defc tile-header
   "Shared header used by both inline tile and fullscreen popover.
    Accepts :draggable? to enable dnd-kit drag listeners."
   [{:keys [node entity-name entity-icon tile-color on-close on-double-click
@@ -159,7 +160,7 @@
                  (when on-close (on-close (:id node))))}
     "\u00d7"]])
 
-(defn tile-header-fc
+(r/defc tile-header-fc
   "Draggable wrapper around tile-header — uses useDraggable for dnd-kit."
   [{:keys [node entity-name entity-icon tile-color close-ref
            color-picker-open? color-picker-rect color-change-ref tile-ref]}]
@@ -182,9 +183,10 @@
                   :drag-listeners     listeners
                   :drag-attrs         attrs}]))
 
-(defn entity-tile-component
+(r/defc entity-tile-component
   "Renders a single entity tile with drag-and-drop, fullscreen, and color-picker support."
-  [node _on-split on-close focused? entities render-entity-tile _parent-ctx on-active-entity-change on-entity-color-change]
+  [{:keys [node on-close focused? entities render-entity-tile
+           on-active-entity-change on-entity-color-change]}]
   (r/with-let [color-picker-open?    (r/atom false)
                color-picker-rect     (r/atom nil)
                close-ref             (atom on-close)
@@ -252,7 +254,7 @@
            (when render-entity-tile
              [render-entity-tile (or entity {:id (:entity-id node)})])]])])))
 
-(defn drag-ghost-portal []
+(r/defc drag-ghost-portal []
   (when-let [g @drag-ghost]
     (react-dom/createPortal
       (r/as-element
