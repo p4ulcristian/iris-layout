@@ -1030,21 +1030,20 @@ body.iris-resizing * {
 }
 
 .iris-mobile-viewport .iris-command-center-palette {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: var(--iris-space-lg);
   padding: var(--iris-space-lg);
   margin-top: auto;
-  overflow: visible;
   width: 100%;
-  align-content: end;
   overflow-y: auto;
 }
 
 .iris-mobile-viewport .iris-command-center-palette-item {
-  width: auto;
-  height: auto;
-  aspect-ratio: 1;
+  width: 80px;
+  height: 80px;
+  flex-shrink: 0;
   padding: var(--iris-space-md);
   font-size: var(--iris-text-sm);
 }
