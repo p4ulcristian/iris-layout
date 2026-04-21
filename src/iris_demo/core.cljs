@@ -18,11 +18,9 @@
    :logs     {:id "logs"     :name "Logs"           :type "logs"     :color "#eab308" :icon (fn [] [:i.fa-solid.fa-list])}})
 
 (def initial-workspaces
-  {[1 1] {:layout {:type "split" :id "s1" :direction "horizontal" :ratio 0.6
-                   :children [{:type "tile" :id "t1" :entity-id "editor"}
-                               {:type "split" :id "s2" :direction "vertical" :ratio 0.6
-                                :children [{:type "tile" :id "t2" :entity-id "terminal"}
-                                           {:type "tile" :id "t3" :entity-id "repl"}]}]}}
+  {[1 1] {:layout {:type "split" :id "s1" :direction "horizontal" :ratio 0.5
+                   :children [{:type "tile" :id "t1" :entity-id "logs"}
+                               {:type "tile" :id "t3" :entity-id "notes"}]}}
    [2 1] {:layout {:type "split" :id "s3" :direction "horizontal" :ratio 0.5
                    :children [{:type "tile" :id "t4" :entity-id "editor"}
                                {:type "tile" :id "t5" :entity-id "browser"}]}}
@@ -31,11 +29,46 @@
                    :children [{:type "tile" :id "t7" :entity-id "terminal"}
                                {:type "tile" :id "t8" :entity-id "repl"}]}}})
 
+(def lorem-lines
+  (vec (for [i (range 1 60)]
+         (str i ". " (nth ["Rewriting the flux capacitor in Clojure."
+                             "State is just a lie your CPU tells you."
+                             "Pure functions never hurt anybody."
+                             "Have you tried turning the monad inside out?"
+                             "The real side effects were the friends we made along the way."
+                             "Immutability: because past you was an idiot."
+                             "This function has O(1) opinions and O(n) regrets."
+                             "Laziness is a virtue when the seq is infinite."
+                             "We don't mutate state here, we just strongly suggest it changes."
+                             "The garbage collector is the only one cleaning up after you."]
+                            (mod i 10))))))
+
 (r/defc entity-tile [entity]
-  [:div {:style {:display "flex" :align-items "center" :justify-content "center"
-                 :height "100%" :width "100%"
-                 :font-size "14px" :color "rgba(255,255,255,0.7)"}}
-   (:name entity)])
+  (let [t (:type entity)]
+    (case t
+      "logs"
+      [:div {:style {:height "100%" :overflow-y "auto" :padding "12px"
+                     :font-family "monospace" :font-size "12px"
+                     :color "rgba(255,255,255,0.6)" :line-height "1.6"}}
+       (for [line lorem-lines]
+         ^{:key line}
+         [:div {:style {:border-bottom "1px solid rgba(255,255,255,0.04)"
+                        :padding "3px 0"}}
+          line])]
+
+      "notes"
+      [:div {:style {:height "100%" :overflow-y "auto" :padding "16px"
+                     :font-size "13px" :color "rgba(255,255,255,0.7)"
+                     :line-height "1.8"}}
+       (for [i (range 20)]
+         ^{:key i}
+         [:p {:style {:margin "0 0 12px"}}
+          (nth lorem-lines i)])]
+
+      [:div {:style {:display "flex" :align-items "center" :justify-content "center"
+                     :height "100%" :width "100%"
+                     :font-size "14px" :color "rgba(255,255,255,0.7)"}}
+       (:name entity)])))
 
 (defonce state
   (r/atom {:workspaces      initial-workspaces

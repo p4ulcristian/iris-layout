@@ -10,3 +10,5 @@ dist/
 *.DS_Store
 ._*
 .defnext-chat/
+.env.dev
+.iris-layout.pid

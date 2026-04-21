@@ -1,9 +1,9 @@
 {:source-paths ["src"]
- :dependencies [[reagent "1.2.0"]
+ :dependencies [[reagent "2.0.1"]
                 [binaryage/devtools "1.0.7"]]
- :http {:port 9640 :host "0.0.0.0"}
- :nrepl {:port 9641 :host "0.0.0.0"}
- :dev-http {5173 "public"}
+ :http {:port #shadow/env ["SHADOW_PORT" :as :int :default 9640] :host "0.0.0.0"}
+ :nrepl {:port #shadow/env ["NREPL_CLJ" :as :int :default 9641] :host "0.0.0.0"}
+ :dev-http {#shadow/env ["DEV_HTTP_PORT" :as :int :default 5173] {:root "public" :push-state/index "index.html"}}
  :builds
  {:app
   {:target :browser
@@ -11,6 +11,7 @@
    :asset-path "/js"
    :modules {:main {:init-fn iris-demo.core/init!}}
    :compiler-options {:source-map true
-                      :closure-defines {shadow.cljs.devtools.client.env/devtools-url "https://9640.irisdoes.work"}}
+                      :closure-defines {shadow.cljs.devtools.client.env/devtools-url
+                                        #shadow/env ["SHADOW_DEVTOOLS_URL" :default "https://9640.irisdoes.work"]}}
    :devtools {:after-load iris-demo.core/reload!
-              :devtools-url "https://9640.irisdoes.work"}}}}
+              :devtools-url #shadow/env ["SHADOW_DEVTOOLS_URL" :default "https://9640.irisdoes.work"]}}}}

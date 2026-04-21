@@ -12,7 +12,8 @@
             [iris-layout.command-center.core :as command-center]
             [iris-layout.interactions.tile :as tile-interactions]
             [iris-layout.interactions.grid :as grid-interactions]
-            [iris-layout.schema :as schema]))
+            [iris-layout.schema :as schema]
+            [iris-layout.mobile.component :as mobile]))
 
 (def drag-overlay-component (r/adapt-react-class DragOverlay))
 
@@ -359,8 +360,17 @@
       (js/requestAnimationFrame
         #(js/requestAnimationFrame
            (fn [] (reset! mounted? true)))))
-    (let [[cols rows] (grid-dimensions workspaces)]
-      [:div.iris-grid-viewport
+    (let [[mobile? set-mobile!] (rh/use-state (< js/window.innerWidth 768))
+          _ (rh/use-effect
+              (fn []
+                (let [handler #(set-mobile! (< js/window.innerWidth 768))]
+                  (.addEventListener js/window "resize" handler)
+                  #(.removeEventListener js/window "resize" handler)))
+              [])]
+      (if mobile?
+        [mobile/mobile-component props]
+        (let [[cols rows] (grid-dimensions workspaces)]
+          [:div.iris-grid-viewport
        {:style (when @tile/dragging-tile {:cursor "grabbing"})}
        [dnd-context-fc
         {:on-drag-start (partial handle-drag-start props-ref)
@@ -389,7 +399,7 @@
               :on-active-entity-change (:on-active-entity-change props)
               :command-center?         command-center?
               :logo                    logo}]])}]
-       [debug-inspector props]])
+       [debug-inspector props]])))
     (finally
       (.removeEventListener js/document "keydown" kd-handler)
       (.removeEventListener js/document "keyup" ku-handler))))
