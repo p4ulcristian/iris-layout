@@ -14,7 +14,7 @@
   "Single element: quarter-circle trigger when closed, full-screen overlay when open."
   [{:keys [cols rows workspaces active-position active-entity entities entity-types
            on-active-position-change on-workspaces-change on-entity-create
-           on-active-entity-change command-center? logo]}]
+           on-active-entity-change command-center? logo mobile?]}]
   (let [open? @command-center?]
     [:div {:class (str "iris-command-center"
                        (when open? " iris-command-center-open"))
@@ -34,15 +34,16 @@
                      (when (and (= (.-target e) (.-currentTarget e))
                                 (not @mini-workspaces/dragging?))
                        (reset! command-center? false)))}
-        [mini-workspaces/workspace-grid
-         {:cols                    cols
-          :rows                    rows
-          :workspaces              workspaces
-          :active-position         active-position
-          :entities                entities
-          :on-workspaces-change    on-workspaces-change
-          :on-active-position-change on-active-position-change
-          :command-center?         command-center?}]
+        (when-not mobile?
+          [mini-workspaces/workspace-grid
+           {:cols                    cols
+            :rows                    rows
+            :workspaces              workspaces
+            :active-position         active-position
+            :entities                entities
+            :on-workspaces-change    on-workspaces-change
+            :on-active-position-change on-active-position-change
+            :command-center?         command-center?}])
         [start-menu/start-menu {:entity-types             entity-types
                                 :active-position          active-position
                                 :active-entity            active-entity

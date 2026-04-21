@@ -85,8 +85,12 @@
 }
 
 /* --- Reset body margin so viewport sits flush --- */
+html:has(.iris-grid-viewport),
 body:has(.iris-grid-viewport) {
   margin: 0;
+  overscroll-behavior: none;
+  overflow: hidden;
+  height: 100%;
 }
 
 /* --- Global: box-sizing --- */
@@ -166,8 +170,12 @@ body:has(.iris-grid-viewport) {
   user-select: none;
 }
 
+html:has(.iris-mobile-viewport),
 body:has(.iris-mobile-viewport) {
   margin: 0;
+  overscroll-behavior: none;
+  overflow: hidden;
+  height: 100%;
 }
 
 .iris-mobile-viewport,
@@ -182,6 +190,7 @@ body:has(.iris-mobile-viewport) {
   width: 100dvw;
   overflow: hidden;
   position: relative;
+  overscroll-behavior: none;
   background: linear-gradient(135deg, rgb(var(--iris-surface)), rgb(var(--iris-surface-raised)), rgb(15 40 45));
   color: rgb(var(--iris-fg));
 }
@@ -1010,4 +1019,305 @@ body.iris-resizing * {
   height: 5px;
   border-radius: 50%;
   flex-shrink: 0;
+}
+
+/* --- Mobile command center — palette fills full screen as a grid --- */
+
+.iris-mobile-viewport .iris-command-center-content {
+  flex-direction: column;
+  justify-content: flex-start;
+  padding: var(--iris-space-xl);
+}
+
+.iris-mobile-viewport .iris-command-center-palette {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--iris-space-lg);
+  padding: var(--iris-space-lg);
+  margin-top: auto;
+  overflow: visible;
+  width: 100%;
+  align-content: end;
+  overflow-y: auto;
+}
+
+.iris-mobile-viewport .iris-command-center-palette-item {
+  width: auto;
+  height: auto;
+  aspect-ratio: 1;
+  padding: var(--iris-space-md);
+  font-size: var(--iris-text-sm);
+}
+
+.iris-mobile-viewport .iris-command-center-palette-icon {
+  font-size: 22px;
+}
+
+.iris-mobile-viewport .iris-command-center-palette-name {
+  font-size: var(--iris-text-sm);
+  max-width: 100%;
+}
+
+
+/* ============================================================
+   CYBERPUNK THEME — 2026 CSS
+   oklch colors · clip-path corners · neon glow · scanlines
+   ============================================================ */
+
+@property --cp-neon {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: oklch(0.85 0.25 195);
+}
+
+@property --cp-glow-strength {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 1;
+}
+
+:root {
+  --cp-cyan:       oklch(0.85 0.25 195);
+  --cp-magenta:    oklch(0.75 0.28 315);
+  --cp-green:      oklch(0.88 0.26 140);
+  --cp-yellow:     oklch(0.92 0.22 95);
+  --cp-bg:         oklch(0.07 0.03 240);
+  --cp-bg-raised:  oklch(0.10 0.03 240);
+  --cp-border:     oklch(0.85 0.25 195 / 0.25);
+  --cp-corner:     7px;
+  --cp-corner-lg:  12px;
+  --cp-corner-xl:  16px;
+  --iris-surface:       7 9 18;
+  --iris-surface-raised: 11 14 26;
+}
+
+/* --- Clip-path corner utility --- */
+
+.iris-entity-tile,
+.iris-command-center-palette-item,
+.iris-command-center-cell,
+.iris-command-center-content,
+.iris-fullscreen-overlay,
+.iris-color-picker-popover {
+  clip-path: polygon(
+    var(--cp-corner) 0%,
+    100% 0%,
+    100% calc(100% - var(--cp-corner)),
+    calc(100% - var(--cp-corner)) 100%,
+    0% 100%,
+    0% var(--cp-corner)
+  );
+}
+
+/* --- Viewport backgrounds --- */
+
+.iris-grid-viewport,
+.iris-mobile-viewport {
+  background:
+    radial-gradient(ellipse 80% 40% at 20% 80%, oklch(0.12 0.08 240 / 0.6), transparent),
+    radial-gradient(ellipse 60% 30% at 80% 20%, oklch(0.10 0.06 315 / 0.4), transparent),
+    var(--cp-bg);
+  font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', ui-monospace, monospace;
+}
+
+/* --- Entity tiles --- */
+
+.iris-entity-tile {
+  background: color-mix(in oklch, var(--cp-bg-raised) 85%, var(--iris-tile-color, var(--cp-cyan)) 15%);
+  border: 1px solid color-mix(in oklch, var(--iris-tile-color, var(--cp-cyan)) 40%, transparent);
+  filter: drop-shadow(0 0 6px color-mix(in oklch, var(--iris-tile-color, var(--cp-cyan)) 30%, transparent));
+  transition: filter var(--iris-ease-default), border-color var(--iris-ease-default);
+}
+
+.iris-entity-tile:has(.iris-entity-tile-header:hover),
+.iris-entity-tile-focused {
+  border-color: color-mix(in oklch, var(--iris-tile-color, var(--cp-cyan)) 70%, transparent);
+  filter: drop-shadow(0 0 12px color-mix(in oklch, var(--iris-tile-color, var(--cp-cyan)) 55%, transparent));
+}
+
+/* Corner accent marks */
+.iris-entity-tile::before {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 10px;
+  height: 10px;
+  border-top: 1px solid color-mix(in oklch, var(--iris-tile-color, var(--cp-cyan)) 80%, white);
+  border-left: 1px solid color-mix(in oklch, var(--iris-tile-color, var(--cp-cyan)) 80%, white);
+  pointer-events: none;
+  z-index: 4;
+}
+
+.iris-entity-tile::after {
+  content: '';
+  position: absolute;
+  bottom: 3px;
+  right: 3px;
+  width: 10px;
+  height: 10px;
+  border-bottom: 1px solid color-mix(in oklch, var(--iris-tile-color, var(--cp-cyan)) 80%, white);
+  border-right: 1px solid color-mix(in oklch, var(--iris-tile-color, var(--cp-cyan)) 80%, white);
+  pointer-events: none;
+  z-index: 4;
+}
+
+/* --- Tile header --- */
+
+.iris-entity-tile-header {
+  background: color-mix(in oklch, var(--iris-tile-color, var(--cp-cyan)) 8%, var(--cp-bg));
+  border-bottom: 1px solid color-mix(in oklch, var(--iris-tile-color, var(--cp-cyan)) 30%, transparent);
+  border-radius: 0;
+  letter-spacing: 0.03em;
+}
+
+.iris-entity-tile-header-name {
+  font-size: var(--iris-text-base);
+  color: color-mix(in oklch, var(--iris-tile-color, var(--cp-cyan)) 70%, white);
+  text-shadow: 0 0 8px color-mix(in oklch, var(--iris-tile-color, var(--cp-cyan)) 60%, transparent);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.iris-entity-tile-header-icon {
+  filter: drop-shadow(0 0 4px currentColor);
+}
+
+.iris-entity-tile-header-close {
+  color: oklch(0.75 0.15 315 / 0.6);
+  transition: color var(--iris-ease-default), text-shadow var(--iris-ease-default);
+}
+
+.iris-entity-tile-header-close:hover {
+  color: var(--cp-magenta);
+  text-shadow: 0 0 8px var(--cp-magenta);
+}
+
+/* --- Resizer --- */
+
+.iris-resizer {
+  background: color-mix(in oklch, var(--cp-cyan) 15%, transparent);
+  transition: background var(--iris-ease-default);
+}
+
+.iris-resizer:hover {
+  background: color-mix(in oklch, var(--cp-cyan) 50%, transparent);
+  box-shadow: 0 0 8px var(--cp-cyan);
+}
+
+/* --- Command center overlay --- */
+
+.iris-command-center-content {
+  background: color-mix(in oklch, var(--cp-bg) 92%, var(--cp-cyan) 8%);
+  border: 1px solid var(--cp-border);
+}
+
+/* Scanlines */
+.iris-command-center-content::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    oklch(0 0 0 / 0.06) 2px,
+    oklch(0 0 0 / 0.06) 4px
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
+.iris-command-center-content > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* --- Mini workspace cells --- */
+
+.iris-command-center-cell {
+  background: color-mix(in oklch, var(--cp-bg-raised) 90%, var(--cp-cyan) 10%);
+  border: 1px solid oklch(0.85 0.25 195 / 0.15);
+  transition: border-color var(--iris-ease-default), filter var(--iris-ease-default);
+}
+
+.iris-command-center-cell:hover,
+.iris-command-center-cell-active {
+  border-color: oklch(0.85 0.25 195 / 0.6) !important;
+  filter: drop-shadow(0 0 8px oklch(0.85 0.25 195 / 0.4));
+}
+
+/* --- Palette items --- */
+
+.iris-command-center-palette-item {
+  --cp-corner: 6px;
+  background: color-mix(in oklch, var(--iris-tile-color, var(--cp-cyan)) 12%, var(--cp-bg-raised));
+  border: 1px solid color-mix(in oklch, var(--iris-tile-color, var(--cp-cyan)) 35%, transparent);
+  filter: drop-shadow(0 0 4px color-mix(in oklch, var(--iris-tile-color, var(--cp-cyan)) 20%, transparent));
+  transition: filter 150ms ease, border-color 150ms ease, transform 150ms linear(0,0.5_20%,1);
+}
+
+.iris-command-center-palette-item:hover {
+  border-color: color-mix(in oklch, var(--iris-tile-color, var(--cp-cyan)) 80%, transparent);
+  filter: drop-shadow(0 0 10px color-mix(in oklch, var(--iris-tile-color, var(--cp-cyan)) 60%, transparent));
+  transform: scale(1.06);
+}
+
+.iris-command-center-palette-name {
+  color: color-mix(in oklch, var(--iris-tile-color, var(--cp-cyan)) 80%, white);
+  text-shadow: 0 0 6px color-mix(in oklch, var(--iris-tile-color, var(--cp-cyan)) 50%, transparent);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+@starting-style {
+  .iris-command-center-open .iris-command-center-palette-item {
+    opacity: 0;
+    transform: translateY(8px) scale(0.92);
+    filter: drop-shadow(0 0 0px transparent);
+  }
+}
+
+/* --- Mini tile chips --- */
+
+.iris-command-center-tile {
+  background: color-mix(in oklch, var(--iris-tile-color, var(--cp-cyan)) 15%, var(--cp-bg));
+  border: 1px solid color-mix(in oklch, var(--iris-tile-color, var(--cp-cyan)) 30%, transparent);
+  border-radius: 3px;
+}
+
+.iris-command-center-tile-name {
+  color: color-mix(in oklch, var(--iris-tile-color, var(--cp-cyan)) 70%, white);
+  text-shadow: 0 0 4px color-mix(in oklch, var(--iris-tile-color, var(--cp-cyan)) 40%, transparent);
+}
+
+/* --- Drop indicator --- */
+
+.iris-drop-highlight {
+  background: color-mix(in oklch, var(--cp-cyan) 20%, transparent) !important;
+  border-color: var(--cp-cyan) !important;
+  box-shadow: inset 0 0 16px color-mix(in oklch, var(--cp-cyan) 20%, transparent);
+}
+
+.iris-drop-label {
+  background: var(--cp-bg);
+  color: var(--cp-cyan);
+  border: 1px solid var(--cp-border);
+  text-shadow: 0 0 6px var(--cp-cyan);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-size: var(--iris-text-xs);
+}
+
+/* --- Trigger button --- */
+
+.iris-command-center-trigger {
+  border: 1px solid var(--cp-border) !important;
+  background: color-mix(in oklch, var(--cp-cyan) 10%, var(--cp-bg)) !important;
+  filter: drop-shadow(0 0 6px oklch(0.85 0.25 195 / 0.3));
+  transition: filter var(--iris-ease-default);
+}
+
+.iris-command-center-trigger:hover {
+  filter: drop-shadow(0 0 12px oklch(0.85 0.25 195 / 0.7));
 }

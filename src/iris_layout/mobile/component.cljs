@@ -40,10 +40,8 @@
           node           (find-active-tile workspaces active-entity)
           swipe-handlers (gestures/use-swipe
                            (fn [dir]
-                             (case dir
-                               (:left :right) (navigate workspaces active-entity dir on-active-entity-change)
-                               :up            (reset! command-center? true)
-                               nil))
+                             (when (#{:left :right} dir)
+                               (navigate workspaces active-entity dir on-active-entity-change)))
                            {})]
       [:div.iris-mobile-viewport
        (merge {} swipe-handlers)
@@ -72,4 +70,5 @@
          :on-entity-create          on-entity-create
          :on-active-entity-change   on-active-entity-change
          :command-center?           (r/atom false)
+         :mobile?                   true
          :logo                      logo}]])))
