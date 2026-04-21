@@ -712,20 +712,35 @@ body:has(.iris-mobile-viewport) {
   transform: scale(1.15);
 }
 
+.iris-entity-tile-header-fullscreen,
 .iris-entity-tile-header-close {
   background: none;
   border: none;
-  color: rgb(var(--iris-fg) / 0.3);
-  font-size: var(--iris-text-xl);
+  font-size: 14px;
   line-height: 1;
   cursor: pointer;
-  padding: 0 var(--iris-space-xs);
-  transition: color var(--iris-ease-default);
+  padding: 2px 5px;
   flex-shrink: 0;
+  border-radius: 2px;
+  transition: color 120ms, filter 120ms;
+}
+
+.iris-entity-tile-header-fullscreen {
+  color: oklch(0.85 0.18 195 / 0.5);
+}
+
+.iris-entity-tile-header-fullscreen:hover {
+  color: var(--cp-cyan);
+  filter: drop-shadow(0 0 5px var(--cp-cyan));
+}
+
+.iris-entity-tile-header-close {
+  color: oklch(0.75 0.15 315 / 0.5);
 }
 
 .iris-entity-tile-header-close:hover {
-  color: rgb(var(--iris-fg) / 0.9);
+  color: var(--cp-magenta);
+  filter: drop-shadow(0 0 5px var(--cp-magenta));
 }
 
 .iris-entity-tile-content {
@@ -890,6 +905,7 @@ body.iris-resizing * {
   .iris-grid-viewport .iris-entity-tile-header-name {
     font-size: var(--iris-text-lg);
   }
+  .iris-grid-viewport .iris-entity-tile-header-fullscreen,
   .iris-grid-viewport .iris-entity-tile-header-close {
     min-width: 44px;
     min-height: 44px;
@@ -1182,15 +1198,6 @@ body.iris-resizing * {
   filter: drop-shadow(0 0 4px currentColor);
 }
 
-.iris-entity-tile-header-close {
-  color: oklch(0.75 0.15 315 / 0.6);
-  transition: color var(--iris-ease-default), text-shadow var(--iris-ease-default);
-}
-
-.iris-entity-tile-header-close:hover {
-  color: var(--cp-magenta);
-  text-shadow: 0 0 8px var(--cp-magenta);
-}
 
 /* --- Resizer --- */
 

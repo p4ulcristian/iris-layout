@@ -128,12 +128,11 @@
 (r/defc tile-header
   "Shared header used by both inline tile and fullscreen popover.
    Accepts :draggable? to enable dnd-kit drag listeners."
-  [{:keys [node entity-name entity-icon tile-color on-close on-double-click
+  [{:keys [node entity-name entity-icon tile-color on-close on-fullscreen
            color-picker-open? color-picker-rect on-color-change
            drag-ref drag-listeners drag-attrs]}]
   [:div.iris-entity-tile-header
-   (merge {:ref drag-ref
-           :on-double-click on-double-click}
+   (merge {:ref drag-ref}
           drag-listeners drag-attrs)
    [:div {:style {:flex-shrink 0}}
     [:div.iris-entity-tile-header-icon
@@ -153,6 +152,12 @@
       [color-picker-popover (:entity-id node) on-color-change
        color-picker-open? @color-picker-rect tile-color])]
    [:span.iris-entity-tile-header-name entity-name]
+   [:button.iris-entity-tile-header-fullscreen
+    {:on-pointer-down (fn [e] (.stopPropagation e))
+     :on-click (fn [e]
+                 (.stopPropagation e)
+                 (when on-fullscreen (on-fullscreen)))}
+    "\u26f6"]
    [:button.iris-entity-tile-header-close
     {:on-pointer-down (fn [e] (.stopPropagation e))
      :on-click (fn [e]
@@ -175,7 +180,10 @@
                   :entity-icon        entity-icon
                   :tile-color         tile-color
                   :on-close           @close-ref
-                  :on-double-click    (fn [_] (toggle-fullscreen! node))
+                  :on-fullscreen      (fn []
+                                        (if js/document.fullscreenElement
+                                          (.exitFullscreen js/document)
+                                          (.requestFullscreen js/document.documentElement)))
                   :color-picker-open? color-picker-open?
                   :color-picker-rect  color-picker-rect
                   :on-color-change    @color-change-ref
@@ -246,7 +254,10 @@
                         :entity-icon     (:icon entity)
                         :tile-color      tile-color
                         :on-close        (fn [_] (toggle-fullscreen! node))
-                        :on-double-click (fn [_] (toggle-fullscreen! node))
+                        :on-fullscreen   (fn []
+                                           (if js/document.fullscreenElement
+                                             (.exitFullscreen js/document)
+                                             (.requestFullscreen js/document.documentElement)))
                         :color-picker-open? color-picker-open?
                         :color-picker-rect  color-picker-rect
                         :on-color-change @color-change-ref}]
